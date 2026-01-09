@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>重大訊息監控系統</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 20px; background-color: #f8f9fa; }
+        .container { max-width: 1200px; margin: auto; }
+        .section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2, h3 { color: #333; border-left: 5px solid #007bff; padding-left: 10px; }
+        
+        /* 通知列表樣式 */
+        #notif-section { border: 2px solid #ff4d4d; background-color: #fff9f9; }
+        #notification-list { list-style: none; padding: 0; max-height: 250px; overflow-y: auto; }
+        .notification-item { 
+            background: #fff; border-bottom: 1px solid #ffebeb; 
+            padding: 10px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .notif-tag { background: #ff4d4d; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 10px; font-weight: bold; }
+
+        /* 設定與查詢區 */
+        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+        input[type="text"], input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; }
+        .btn-query { background-color: #007bff; }
+        .btn-export { background-color: #28a745; }
+        .btn-save { background-color: #6c757d; }
+
+        /* 表格樣式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background-color: #f1f3f5; }
+        td.content-cell { cursor: pointer; color: #007bff; text-decoration: underline; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        td.content-cell.expanded { white-space: normal; color: black; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📈 股市重大訊息主動監控系統</h2>
+
+    <div id="notif-section" class="section" style="display:none;">
+        <h3>🔔 關鍵字命中通知 (最新 20 筆)</h3>
+        <div id="notification-list">
+            </div>
+    </div>
+
+    <div class="section">
+        <h3>🛠️ 監控清單設定</h3>
+        <div class="controls">
+            <input type="text" id="server_keywords" placeholder="輸入關鍵字，用逗號隔開 (如: 減資, 併購)" style="width: 500px;">
+            <button class="btn btn-save" onclick="saveServerKeywords()">更新監控清單</button>
+            <span id="save-status"></span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>🔍 歷史資料查詢</h3>
+        <div class="controls">
+            <label>日期: <input type="date" id="start_date"> ~ <input type="date" id="end_date"></label>
+            <input type="text" id="keyword" placeholder="搜尋主旨...">
+            <button class="btn btn-query" onclick="fetchData()">查詢</button>
+            <button id="exportBtn" class="btn btn-export" style="display:none;" onclick="exportToCSV()">匯出 CSV</button>
+        </div>
+
+        <table id="results">
+            <thead>
+                <tr>
+                    <th>市場</th>
+                    <th>公司</th>
+                    <th>日期時間</th>
+                    <th>主旨</th>
+                    <th>內文</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let currentData = [];
+
+    window.onload = () => {
+        // 設定預設日期
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById("start_date").value = today;
+        document.getElementById("end_date").value = today;
+
+        // 初始化：載入關鍵字與通知
+        loadServerKeywords();
+        loadNotifications();
+    };
+
+    // --- 關鍵字管理 ---
+    async function loadServerKeywords() {
+        try {
+            const res = await fetch("http://localhost:8000/keywords");
+            const data = await res.json();
+            if (data.keywords) {
+                document.getElementById("server_keywords").value = data.keywords.join(", ");
+            }
+        } catch (e) { console.error("無法載入關鍵字"); }
+    }
+
+    async function saveServerKeywords() {
+        const kwInput = document.getElementById("server_keywords").value;
+        const kwArray = kwInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        
+        try {
+            const res = await fetch("http://localhost:8000/keywords", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ keywords: kwArray })
+            });
+            if (res.ok) {
+                const status = document.getElementById("save-status");
+                status.textContent = "✅ 更新成功";
+                status.style.color = "green";
+                setTimeout(() => status.textContent = "", 3000);
+            }
+        } catch (e) { alert("儲存失敗"); }
+    }
+
+    // --- 通知列表：向後端 API 請求命中紀錄 ---
+    async function loadNotifications() {
+        try {
+            const res = await fetch("http://localhost:8000/notifications");
+            const alerts = await res.json();
+            const notifDiv = document.getElementById("notification-list");
+            const notifSection = document.getElementById("notif-section");
+
+            if (alerts && alerts.length > 0) {
+                notifSection.style.display = "block"; // 有資料才顯示紅框區塊
+                notifDiv.innerHTML = alerts.map(a => `
+                    <div class="notification-item">
+                        <div>
+                            <span class="notif-tag">${a.matched_keyword}</span>
+                            <strong>${a.company_name}</strong>: ${a.subject}
+                        </div>
+                        <small>${a.publish_date} ${a.publish_time}</small>
+                    </div>
+                `).join('');
+            } else {
+                notifSection.style.display = "none";
+            }
+        } catch (e) { 
+            console.error("無法載入通知列表", e); 
+        }
+    }
+
+    // --- 查詢功能 ---
+    async function fetchData() {
+        const start = document.getElementById("start_date").value;
+        const end = document.getElementById("end_date").value;
+        const keyword = document.getElementById("keyword").value;
+
+        let url = `http://localhost:8000/filter?start_date=${start}&end_date=${end}&keyword=${encodeURIComponent(keyword)}`;
+        
+        const res = await fetch(url);
+        currentData = await res.json();
+        const tbody = document.querySelector("#results tbody");
+        tbody.innerHTML = "";
+
+        currentData.forEach(r => {
+            const tr = document.createElement("tr");
+            const contentCell = document.createElement("td");
+            contentCell.className = "content-cell";
+            contentCell.textContent = "展開內文";
+            contentCell.onclick = () => {
+                if (contentCell.classList.contains("expanded")) {
+                    contentCell.classList.remove("expanded");
+                    contentCell.textContent = "展開內文";
+                } else {
+                    contentCell.classList.add("expanded");
+                    contentCell.textContent = r.content || "無內容";
+                }
+            };
+
+            tr.innerHTML = `
+                <td>${r.market}</td>
+                <td>${r.company_code}<br>${r.company_name}</td>
+                <td>${r.publish_date}<br>${r.publish_time}</td>
+                <td>${r.subject}</td>
+            `;
+            tr.appendChild(contentCell);
+            tbody.appendChild(tr);
+        });
+        document.getElementById("exportBtn").style.display = currentData.length > 0 ? "inline-block" : "none";
+    }
+
+    function exportToCSV() {
+        const headers = ["市場", "公司代號", "公司名稱", "發言日期", "發言時間", "主旨", "內文"];
+        const rows = currentData.map(r => [
+            r.market, r.company_code, r.company_name, r.publish_date, r.publish_time,
+            `"${(r.subject || "").replace(/"/g, '""')}"`,
+            `"${(r.content || "").replace(/"/g, '""')}"`
+        ].join(","));
+        const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `mops_export.csv`;
+        link.click();
+    }
+</script>
+</body>
+</html>

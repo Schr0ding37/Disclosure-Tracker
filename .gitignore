@@ -1,0 +1,15 @@
+# 數據庫與本地資料
+postgres_data/
+keywords.txt
+
+# Python 緩存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 環境變數
+.env
+
+# 操作系統檔案
+.DS_Store
+Thumbs.db

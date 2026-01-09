@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: mops-db
+    restart: always
+    environment:
+      POSTGRES_DB: mops
+      POSTGRES_USER: mops
+      POSTGRES_PASSWORD: mops123
+    volumes:
+      # 將資料存放在專案目錄下的 postgres_data 資料夾內
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    container_name: major_backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://mops:mops123@db:5432/mops
+    volumes:
+      - ./fetcher:/app/fetcher
+      - ./keywords.txt:/app/keywords.txt:rw  # 掛載關鍵字檔案，設定為可讀寫
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "
+      echo '等待資料庫啟動 (5432)...' &&
+      until python3 -c 'import socket; s = socket.socket(); s.connect((\"db\", 5432))' 2>/dev/null; do
+        sleep 1
+      done &&
+      echo '資料庫已就緒，開始抓取資料...' &&
+      python3 /app/fetcher/fetch_daily.py && 
+      echo '抓取完成，啟動 API...' &&
+      uvicorn main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    image: nginx:alpine
+    container_name: major_frontend
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+
+  scheduler:
+    image: mcuadros/ofelia:latest
+    container_name: mops_scheduler
+    restart: unless-stopped
+    depends_on:
+      - backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: daemon --docker 
+    labels:
+      ofelia.job-exec.mops_fetch_job.schedule: "0 0 14,22 * * *"
+      ofelia.job-exec.mops_fetch_job.container: "major_backend"
+      ofelia.job-exec.mops_fetch_job.command: "python3 /app/fetcher/fetch_daily.py"
