@@ -40,9 +40,11 @@
     <h2>📈 股市重大訊息主動監控系統</h2>
 
     <div id="notif-section" class="section" style="display:none;">
-        <h3>🔔 關鍵字命中通知 (最新 20 筆)</h3>
-        <div id="notification-list">
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>🔔 關鍵字命中通知 (最新 20 筆)</h3>
+            <button class="btn" style="background-color: #dc3545; font-size: 12px;" onclick="clearNotifications()">🗑️ 清除所有通知</button>
+        </div>
+        <div id="notification-list"></div>
     </div>
 
     <div class="section">
@@ -108,6 +110,24 @@
         } catch (e) { console.error("無法載入關鍵字"); }
     }
 
+    // 【新增】清除通知的邏輯
+    async function clearNotifications() {
+        if (!confirm("確定要清除所有命中通知紀錄嗎？")) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/notifications`, {
+                method: "DELETE"
+            });
+            if (res.ok) {
+                // 清除成功後，隱藏通知區塊並清空列表
+                document.getElementById("notif-section").style.display = "none";
+                document.getElementById("notification-list").innerHTML = "";
+            }
+        } catch (e) {
+            alert("清除失敗");
+        }
+    }
+    // 修改原有的 saveServerKeywords 提示文字
     async function saveServerKeywords() {
         const kwInput = document.getElementById("server_keywords").value;
         const kwArray = kwInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
@@ -120,9 +140,12 @@
             });
             if (res.ok) {
                 const status = document.getElementById("save-status");
-                status.textContent = "✅ 更新成功";
+                status.textContent = "✅ 更新成功，已啟動背景掃描...";
                 status.style.color = "green";
-                setTimeout(() => status.textContent = "", 3000);
+                setTimeout(() => status.textContent = "", 5000);
+                
+                // 選做：5 秒後自動刷新通知列表，看看有沒有新命中
+                setTimeout(loadNotifications, 5000);
             }
         } catch (e) { alert("儲存失敗"); }
     }

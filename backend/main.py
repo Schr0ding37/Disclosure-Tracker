@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
+import subprocess
 
 app = FastAPI()
 app.add_middleware(
@@ -30,12 +31,20 @@ def get_keywords():
 
 @app.post("/keywords")
 def save_keywords(data: dict = Body(...)):
-    keywords = data.get("keywords", [])
-    with open(KEYWORDS_FILE, "w", encoding="utf-8") as f:
-        for kw in keywords:
-            if kw.strip():
-                f.write(f"{kw.strip()}\n")
-    return {"status": "success"}
+    try:
+        keywords = data.get("keywords", [])
+        with open(KEYWORDS_FILE, "w", encoding="utf-8") as f:
+            for kw in keywords:
+                if kw.strip():
+                    f.write(f"{kw.strip()}\n")
+        
+        # 【關鍵】儲存後立即在背景執行掃描腳本
+        # 使用 Popen 不會阻塞 API 回傳
+        subprocess.Popen(["python3", "/app/fetcher/fetch_daily.py"])
+        
+        return {"status": "success", "trigger": "scan_started"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/notifications")
 def get_notifications():
@@ -73,3 +82,18 @@ def filter_records(start_date: str = None, end_date: str = None, keyword: str = 
     res = cur.fetchall()
     cur.close(); conn.close()
     return res
+
+# 【新增】清除所有通知的接口
+@app.delete("/notifications")
+def clear_notifications():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # 刪除 alerts 表中所有資料
+        cur.execute("DELETE FROM alerts")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "success", "message": "All notifications cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
