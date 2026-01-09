@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   db:
-    image: postgres:15
+    image: postgres:15-alpine # 樹莓派建議用 alpine 版，資源佔用極低
     container_name: mops-db
     restart: always
     environment:
@@ -31,9 +31,8 @@ services:
       - "8000:8000"
     command: >
       sh -c "
-      echo '等待資料庫啟動 (5432)...' &&
       until python3 -c 'import socket; s = socket.socket(); s.connect((\"db\", 5432))' 2>/dev/null; do
-        sleep 1
+        echo 'Waiting for database...' && sleep 2
       done &&
       echo '資料庫已就緒，開始抓取資料...' &&
       python3 /app/fetcher/fetch_daily.py && 
@@ -45,7 +44,7 @@ services:
     container_name: major_frontend
     restart: unless-stopped
     volumes:
-      - ./frontend:/usr/share/nginx/html
+      - ./frontend:/usr/share/nginx/html:ro # 設定為只讀以保護 SD 卡
     ports:
       - "8080:80"
 
