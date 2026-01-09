@@ -50,17 +50,18 @@ def save_keywords(data: dict = Body(...)):
 def get_notifications():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    # 抓取最近 20 筆命中的通知
+    # 移除 LIMIT 20，改為抓取所有命中紀錄
     query = """
-        SELECT a.matched_keyword, d.company_name, d.subject, d.publish_date, d.publish_time
+        SELECT a.matched_keyword, d.company_name, d.company_code, d.subject, 
+               d.publish_date, d.publish_time, d.content
         FROM alerts a
         JOIN disclosures d ON a.disclosure_id = d.id
         ORDER BY a.created_at DESC
-        LIMIT 20
     """
     cur.execute(query)
     res = cur.fetchall()
-    cur.close(); conn.close()
+    cur.close()
+    conn.close()
     return res
 
 @app.get("/filter")

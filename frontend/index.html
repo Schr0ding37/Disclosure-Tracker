@@ -11,12 +11,28 @@
         
         /* 通知列表樣式 */
         #notif-section { border: 2px solid #ff4d4d; background-color: #fff9f9; }
-        #notification-list { list-style: none; padding: 0; max-height: 250px; overflow-y: auto; }
-        .notification-item { 
-            background: #fff; border-bottom: 1px solid #ffebeb; 
-            padding: 10px; display: flex; justify-content: space-between; align-items: center;
+        #notification-list { 
+            list-style: none; 
+            padding: 0; 
+            max-height: 500px; /* 設定一個你覺得舒適的高度，例如 500px */
+            overflow-y: auto;  /* 超過高度時顯示捲軸 */
+            border: 1px solid #eee;
         }
-        .notif-tag { background: #ff4d4d; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 10px; font-weight: bold; }
+        /* 修改通知項目樣式，移除原本的 flex 限制以利內文顯示 */
+        .notification-item:hover {
+            background-color: #fff0f0; /* 滑鼠移上去有一點顏色變化 */
+        }
+        .notif-tag {
+            background: #ff4d4d;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 8px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
 
         /* 標籤管理介面 */
         .kw-container {
@@ -217,16 +233,41 @@
             const alerts = await res.json();
             const notifDiv = document.getElementById("notification-list");
             const notifSection = document.getElementById("notif-section");
+
             if (alerts && alerts.length > 0) {
                 notifSection.style.display = "block";
-                notifDiv.innerHTML = alerts.map(a => `
-                    <div class="notification-item">
-                        <div><span class="notif-tag">${a.matched_keyword}</span><strong>${a.company_name}</strong>: ${a.subject}</div>
-                        <small>${a.publish_date} ${a.publish_time}</small>
+                notifDiv.innerHTML = alerts.map((a, index) => `
+                    <div class="notification-item-container" style="border-bottom: 1px solid #eee;">
+                        <div class="notification-item" onclick="toggleNotifContent(${index})" style="cursor: pointer; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span class="notif-tag">${a.matched_keyword}</span>
+                                <strong>${a.company_name}</strong> (${a.company_code}) 
+                                <br><span style="font-size: 14px; color: #555;">${a.subject}</span>
+                            </div>
+                            <div style="text-align: right; min-width: 150px;">
+                                <small style="color: #888;">${a.publish_date} ${a.publish_time}</small>
+                                <div style="font-size: 12px; color: #007bff; margin-top: 4px;">▼ 點擊查看內文</div>
+                            </div>
+                        </div>
+                        <div id="notif-content-${index}" style="display: none; padding: 15px; background: #fff; font-size: 14px; line-height: 1.6; border-top: 1px dashed #ddd; white-space: pre-wrap; color: #333;">
+                            ${a.content || '無內文資料'}
+                        </div>
                     </div>
                 `).join('');
-            } else { notifSection.style.display = "none"; }
-        } catch (e) { console.error("無法載入通知"); }
+            } else {
+                notifSection.style.display = "none";
+            }
+        } catch (e) { console.error("無法載入通知列表", e); }
+    }
+
+    // 新增一個切換顯示的函數
+    function toggleNotifContent(index) {
+        const contentDiv = document.getElementById(`notif-content-${index}`);
+        if (contentDiv.style.display === "none") {
+            contentDiv.style.display = "block";
+        } else {
+            contentDiv.style.display = "none";
+        }
     }
 
     async function clearNotifications() {

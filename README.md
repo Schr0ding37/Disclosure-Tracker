@@ -1,54 +1,73 @@
-# 🚀 Disclosure-Tracker
+# 📊 重訊監控與資安事件追蹤系統 (Disclosure-Tracker)
 
-這是一個基於 Docker 開發的自動化股市重大訊息監控系統。系統能定時追蹤公開資訊觀測站（MOPS）的最新動態，並根據使用者設定的關鍵字進行即時比對與主動通知。
+這是一個專為追蹤台灣上市櫃公司「重大訊息」而設計的自動化監控系統，特別強化了「資安事件」的追蹤功能。系統會自動抓取證交所與櫃買中心的最新公告，並根據你設定的關鍵字進行即時比對與通知。
 
-## ✨ 核心功能
-* **自動化追蹤 (Auto-Tracking)**：每日定時從證交所 (TWSE) 與櫃買中心 (TPEx) 獲取最新重訊。
-* **智慧監控 (Smart Monitoring)**：後端自動比對關鍵字，命中時立即存入 Alerts 資料表。
-* **同步設定 (Server-side Config)**：監控清單儲存於伺服器端，支援多裝置同步設定。
-* **持久化存儲 (Data Persistence)**：資料庫掛載至本機 `./postgres_data`，確保數據安全性。
-* **資料導出 (Data Export)**：支持一鍵導出包含完整內文的 CSV 報表。
+## 🌟 核心功能
+* **即時監控**：自動追蹤全台上市櫃公司重訊。
+* **資安預警**：內建專業資安詞庫（如：駭客、勒索病毒、DDoS、外洩等）。
+* **進階查詢**：支援「公司代號/名稱」與「關鍵字」雙重交叉過濾。
+* **一鍵檢視**：在通知欄位直接點擊即可展開查看完整的公告內文，不需跳轉。
+* **標籤管理**：視覺化管理監控關鍵字，可隨時新增或移除。
 
 ---
 
-## 🚀 快速建置步驟
+## 🚀 快速開始 (新手教學)
 
-### 1. 準備環境
-確保電腦已安裝 Docker 與 Docker Desktop。
+### 1. 環境需求
+* 已安裝 Docker 與 Docker Compose。
+* 一台 樹莓派 (Raspberry Pi) 或 Linux 伺服器。
 
-### 2. 檔案結構
-在專案根目錄 `Disclosure-Tracker/` 下：
-- backend/ (FastAPI 與 Dockerfile)
-- db/ (init.sql)
-- fetcher/ (fetch_daily.py)
-- frontend/ (index.html)
-- docker-compose.yml
-- keywords.txt (手動先 touch 一個空白檔)
+### 2. 安裝步驟
+首先，將專案複製到你的裝置上：
+git clone https://github.com/你的帳號/Disclosure-Tracker.git
+cd Disclosure-Tracker
 
 ### 3. 啟動系統
-docker compose up -d --build
+使用 Docker 一鍵啟動所有服務：
+sudo docker compose up -d
 
 ---
 
-## 🛠️ 管理員工具箱 (Debug 指令)
+## 🛠️ 使用說明
 
-### 🔍 數據庫操作
-- 統計總追蹤筆數：
-  docker exec -it mops-db psql -U mops -d mops -c "SELECT count(*) FROM disclosures;"
+### A. 訪問網頁
+在瀏覽器輸入你的裝置 IP 地址（預設埠號為 8080）：
+http://你的裝置IP:8080
 
-- 查詢最新 5 筆監測紀錄：
-  docker exec -it mops-db psql -U mops -d mops -c "SELECT publish_date, company_name, subject FROM disclosures ORDER BY publish_date DESC LIMIT 5;"
+### B. 管理監控關鍵字
+1. 點擊頁面上的 「⚙️ 系統設定」。
+2. 在輸入框輸入你想監控的詞（例如：股利、併購）。
+3. 按下 「儲存並更新」，系統之後抓到包含這些詞的重訊就會跳出通知。
 
-- 查看關鍵字命中列表：
-  docker exec -it mops-db psql -U mops -d mops -c "SELECT * FROM alerts;"
+### C. 查看通知
+* 紅色標籤：代表該則重訊命中的關鍵字。
+* 查看內文：點擊通知項目中的 「▼ 點擊查看內文」，即可在原地展開詳細公告內容。
+* 清除通知：處理完後可點擊 「🗑️ 清除所有通知」。
 
-### 🚀 手動任務
-- 強制立即觸發全球抓取任務：
-  docker exec -it major_backend python3 /app/fetcher/fetch_daily.py
+### D. 搜尋歷史資料
+在下方 「🔍 歷史資料查詢」 區塊：
+* 左側輸入框：輸入公司代號 (如 2330) 或名稱 (如 台積電)。
+* 右側輸入框：輸入想找的內容 (如 資安)。
+* 點擊 「執行查詢」 即可找到相關紀錄。
 
-### 🐞 故障排除
-- 實時查看系統日誌：
-  docker logs major_backend -f
+---
 
-- 重置所有容器與數據：
-  docker compose down -v
+## 📁 資料夾結構說明
+* backend/: 存放 Python API 程式碼 (FastAPI)。
+* fetcher/: 存放負責爬取證交所資料的程式碼。
+* frontend/: 網頁介面程式碼 (HTML/JS/CSS)。
+* keywords.txt: 存放你設定的關鍵字（請勿將其建立為資料夾）。
+* postgres_data/: 存放所有歷史重訊的資料庫檔案。
+
+---
+
+## ❓ 常見問題 (FAQ)
+
+**Q1：為什麼網頁顯示「無法連線至後端」？**
+請檢查後端容器是否正常運作：sudo docker compose ps。若顯示 Exit，請檢查 keywords.txt 是否變成了一個資料夾，如果是，請將其刪除並重新建立為檔案。
+
+**Q2：如何更新關鍵字清單？**
+你可以直接在網頁介面更新，也可以在電腦端修改 keywords.txt 後 push，再到樹莓派執行 git pull。
+
+---
+*本專案僅供學術研究與投資參考，資料來源為公開資訊觀測站 (MOPS)。*
