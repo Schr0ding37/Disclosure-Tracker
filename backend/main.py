@@ -64,24 +64,31 @@ def get_notifications():
     return res
 
 @app.get("/filter")
-def filter_records(start_date: str = None, end_date: str = None, keyword: str = None):
+def filter_data(start_date: str, end_date: str, company: str = "", keyword: str = ""):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    query = "SELECT * FROM disclosures WHERE 1=1"
-    params = []
-    if start_date: 
-        query += " AND publish_date >= %s"; params.append(start_date)
-    if end_date: 
-        query += " AND publish_date <= %s"; params.append(end_date)
-    if keyword: 
-        query += " AND (subject ILIKE %s OR content ILIKE %s)"; 
-        params.append(f"%{keyword}%"); params.append(f"%{keyword}%")
     
-    query += " ORDER BY publish_date DESC, publish_time DESC LIMIT 100"
+    # 基礎查詢：日期區間
+    query = "SELECT * FROM disclosures WHERE publish_date BETWEEN %s AND %s"
+    params = [start_date, end_date]
+    
+    # 動態增加公司過濾 (代號或名稱)
+    if company:
+        query += " AND (company_name ILIKE %s OR company_code ILIKE %s)"
+        params.extend([f"%{company}%", f"%{company}%"])
+        
+    # 動態增加關鍵字過濾 (主旨或內文)
+    if keyword:
+        query += " AND (subject ILIKE %s OR content ILIKE %s)"
+        params.extend([f"%{keyword}%", f"%{keyword}%"])
+        
+    query += " ORDER BY publish_date DESC, publish_time DESC"
+    
     cur.execute(query, tuple(params))
-    res = cur.fetchall()
-    cur.close(); conn.close()
-    return res
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+    return results
 
 # 【新增】清除所有通知的接口
 @app.delete("/notifications")

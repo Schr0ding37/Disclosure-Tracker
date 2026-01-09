@@ -2,12 +2,12 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>重大訊息監控系統</title>
+    <title>Disclosure-Tracker | 重大訊息監控系統</title>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; margin: 20px; background-color: #f8f9fa; }
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 20px; background-color: #f8f9fa; color: #333; }
         .container { max-width: 1200px; margin: auto; }
         .section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2, h3 { color: #333; border-left: 5px solid #007bff; padding-left: 10px; }
+        h2, h3 { color: #333; border-left: 5px solid #007bff; padding-left: 10px; margin-top: 0; }
         
         /* 通知列表樣式 */
         #notif-section { border: 2px solid #ff4d4d; background-color: #fff9f9; }
@@ -18,20 +18,39 @@
         }
         .notif-tag { background: #ff4d4d; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 10px; font-weight: bold; }
 
-        /* 設定與查詢區 */
+        /* 標籤管理介面 */
+        .kw-container {
+            display: flex; flex-wrap: wrap; gap: 8px; padding: 12px;
+            border: 1px solid #ddd; border-radius: 4px; background: #fafafa;
+            min-height: 45px; margin-bottom: 10px;
+        }
+        .kw-tag {
+            background: #007bff; color: white; padding: 5px 12px; border-radius: 20px;
+            display: flex; align-items: center; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .kw-tag .remove-btn { margin-left: 8px; cursor: pointer; color: #fff; font-weight: bold; opacity: 0.7; }
+        .kw-tag .remove-btn:hover { opacity: 1; }
+        
+        .kw-input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        #kw-editor-panel { display: none; margin-top: 15px; border-top: 1px dashed #ddd; padding-top: 15px; }
+
+        /* 按鈕與控制區 */
         .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-        input[type="text"], input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; }
+        input[type="text"], input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex-grow: 1; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
+        .btn:hover { opacity: 0.9; }
         .btn-query { background-color: #007bff; }
         .btn-export { background-color: #28a745; }
-        .btn-save { background-color: #6c757d; }
+        .btn-save { background-color: #28a745; width: 100%; margin-top: 5px; }
+        .btn-clear { background-color: #dc3545; font-size: 12px; }
+        .btn-toggle-kw { background-color: #6c757d; font-size: 14px; }
 
         /* 表格樣式 */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
         th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
-        th { background-color: #f1f3f5; }
+        th { background-color: #f1f3f5; position: sticky; top: 0; }
         td.content-cell { cursor: pointer; color: #007bff; text-decoration: underline; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        td.content-cell.expanded { white-space: normal; color: black; text-decoration: none; }
+        td.content-cell.expanded { white-space: normal; color: black; text-decoration: none; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -42,17 +61,26 @@
     <div id="notif-section" class="section" style="display:none;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3>🔔 關鍵字命中通知 (最新 20 筆)</h3>
-            <button class="btn" style="background-color: #dc3545; font-size: 12px;" onclick="clearNotifications()">🗑️ 清除所有通知</button>
+            <button class="btn btn-clear" onclick="clearNotifications()">🗑️ 清除所有通知</button>
         </div>
         <div id="notification-list"></div>
     </div>
 
     <div class="section">
-        <h3>🛠️ 監控清單設定</h3>
-        <div class="controls">
-            <input type="text" id="server_keywords" placeholder="輸入關鍵字，用逗號隔開 (如: 減資, 併購)" style="width: 500px;">
-            <button class="btn btn-save" onclick="saveServerKeywords()">更新監控清單</button>
-            <span id="save-status"></span>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>🛠️ 系統監控設定</h3>
+            <button class="btn btn-toggle-kw" id="toggleKwBtn" onclick="toggleKwPanel()">⚙️ 編輯監控關鍵字</button>
+        </div>
+        
+        <div id="kw-editor-panel">
+            <p style="font-size: 14px; color: #666;">新增資安或重大事件關鍵字，儲存後將立即觸發背景掃描。</p>
+            <div class="kw-input-group">
+                <input type="text" id="new_kw_input" placeholder="輸入關鍵字後按 Enter (例如: 網路攻擊)">
+                <button class="btn btn-query" onclick="addKeywordTag()">➕ 加入</button>
+            </div>
+            <div id="kw_list_tags" class="kw-container"></div>
+            <button class="btn btn-save" onclick="saveServerKeywords()">💾 儲存並更新監控清單</button>
+            <p id="save-status" style="margin-top: 8px; font-weight: bold;"></p>
         </div>
     </div>
 
@@ -60,8 +88,11 @@
         <h3>🔍 歷史資料查詢</h3>
         <div class="controls">
             <label>日期: <input type="date" id="start_date"> ~ <input type="date" id="end_date"></label>
-            <input type="text" id="keyword" placeholder="搜尋主旨...">
-            <button class="btn btn-query" onclick="fetchData()">查詢</button>
+        </div>
+        <div class="controls" style="margin-top: 10px;">
+            <input type="text" id="search_company" placeholder="輸入公司名稱或代號 (如: 台積電/2330)" style="flex: 1;">
+            <input type="text" id="search_keyword" placeholder="輸入關鍵字 (如: 資安/配息)" style="flex: 1;">
+            <button class="btn btn-query" onclick="fetchData()">執行查詢</button>
             <button id="exportBtn" class="btn btn-export" style="display:none;" onclick="exportToCSV()">匯出 CSV</button>
         </div>
 
@@ -82,138 +113,178 @@
 
 <script>
     let currentData = [];
+    let activeKeywords = [];
     
-    // 【關鍵修改】自動偵測當前 IP
     const currentHost = window.location.hostname;
     const API_BASE = `http://${currentHost}:8000`;
 
     window.onload = () => {
-        // 設定預設日期
         const today = new Date().toISOString().split('T')[0];
         document.getElementById("start_date").value = today;
         document.getElementById("end_date").value = today;
-
-        // 初始化：載入關鍵字與通知
         loadServerKeywords();
         loadNotifications();
     };
 
-    // --- 關鍵字管理 ---
-    async function loadServerKeywords() {
-        try {
-            // 使用 API_BASE 代替 localhost
-            const res = await fetch(`${API_BASE}/keywords`);
-            const data = await res.json();
-            if (data.keywords) {
-                document.getElementById("server_keywords").value = data.keywords.join(", ");
-            }
-        } catch (e) { console.error("無法載入關鍵字"); }
-    }
-
-    // 【新增】清除通知的邏輯
-    async function clearNotifications() {
-        if (!confirm("確定要清除所有命中通知紀錄嗎？")) return;
-
-        try {
-            const res = await fetch(`${API_BASE}/notifications`, {
-                method: "DELETE"
-            });
-            if (res.ok) {
-                // 清除成功後，隱藏通知區塊並清空列表
-                document.getElementById("notif-section").style.display = "none";
-                document.getElementById("notification-list").innerHTML = "";
-            }
-        } catch (e) {
-            alert("清除失敗");
+    // --- 顯示/隱藏 面板邏輯 ---
+    function toggleKwPanel() {
+        const panel = document.getElementById("kw-editor-panel");
+        const btn = document.getElementById("toggleKwBtn");
+        if (panel.style.display === "none" || panel.style.display === "") {
+            panel.style.display = "block";
+            btn.textContent = "✖️ 關閉編輯器";
+        } else {
+            panel.style.display = "none";
+            btn.textContent = "⚙️ 編輯監控關鍵字";
         }
     }
-    // 修改原有的 saveServerKeywords 提示文字
-    async function saveServerKeywords() {
-        const kwInput = document.getElementById("server_keywords").value;
-        const kwArray = kwInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+    // --- 關鍵字標籤邏輯 ---
+    async function loadServerKeywords() {
+    try {
+        const res = await fetch(`${API_BASE}/keywords`);
+        if (!res.ok) throw new Error("Network response was not ok");
         
+        const data = await res.json();
+        
+        // 確保後端回傳的是物件中的 keywords 陣列
+        if (data && data.keywords) {
+            activeKeywords = data.keywords; // 將後端資料存入前端全域變數
+            console.log("成功載入關鍵字:", activeKeywords); // 除錯用
+            renderKeywordTags(); // 務必呼叫渲染函數，標籤才會顯示出來
+        }
+    } catch (e) { 
+        console.error("無法載入關鍵字:", e); 
+        document.getElementById("kw_list_tags").innerHTML = '<span style="color:red">無法連線至後端獲取清單</span>';
+    }
+}
+
+    function renderKeywordTags() {
+        const container = document.getElementById("kw_list_tags");
+        container.innerHTML = activeKeywords.length === 0 ? '<span style="color:#999">尚未設定監控關鍵字</span>' : '';
+        activeKeywords.forEach((kw, index) => {
+            const tag = document.createElement("div");
+            tag.className = "kw-tag";
+            tag.innerHTML = `${kw}<span class="remove-btn" onclick="removeKeywordTag(${index})">×</span>`;
+            container.appendChild(tag);
+        });
+    }
+
+    function addKeywordTag() {
+        const input = document.getElementById("new_kw_input");
+        const val = input.value.trim();
+        if (val && !activeKeywords.includes(val)) {
+            activeKeywords.push(val);
+            renderKeywordTags();
+            input.value = "";
+        }
+    }
+
+    document.getElementById("new_kw_input").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") addKeywordTag();
+    });
+
+    function removeKeywordTag(index) {
+        activeKeywords.splice(index, 1);
+        renderKeywordTags();
+    }
+
+    async function saveServerKeywords() {
+        const status = document.getElementById("save-status");
         try {
             const res = await fetch(`${API_BASE}/keywords`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ keywords: kwArray })
+                body: JSON.stringify({ keywords: activeKeywords })
             });
             if (res.ok) {
-                const status = document.getElementById("save-status");
-                status.textContent = "✅ 更新成功，已啟動背景掃描...";
+                status.textContent = "✅ 設定儲存成功！正在啟動背景掃描...";
                 status.style.color = "green";
-                setTimeout(() => status.textContent = "", 5000);
-                
-                // 選做：5 秒後自動刷新通知列表，看看有沒有新命中
-                setTimeout(loadNotifications, 5000);
+                setTimeout(() => {
+                    status.textContent = "";
+                    loadNotifications();
+                }, 5000);
             }
-        } catch (e) { alert("儲存失敗"); }
+        } catch (e) { 
+            status.textContent = "❌ 儲存失敗"; status.style.color = "red";
+        }
     }
 
-    // --- 通知列表：向後端 API 請求命中紀錄 ---
+    // --- 通知與查詢 (保持不變) ---
     async function loadNotifications() {
         try {
             const res = await fetch(`${API_BASE}/notifications`);
             const alerts = await res.json();
             const notifDiv = document.getElementById("notification-list");
             const notifSection = document.getElementById("notif-section");
-
             if (alerts && alerts.length > 0) {
-                notifSection.style.display = "block"; // 有資料才顯示紅框區塊
+                notifSection.style.display = "block";
                 notifDiv.innerHTML = alerts.map(a => `
                     <div class="notification-item">
-                        <div>
-                            <span class="notif-tag">${a.matched_keyword}</span>
-                            <strong>${a.company_name}</strong>: ${a.subject}
-                        </div>
+                        <div><span class="notif-tag">${a.matched_keyword}</span><strong>${a.company_name}</strong>: ${a.subject}</div>
                         <small>${a.publish_date} ${a.publish_time}</small>
                     </div>
                 `).join('');
-            } else {
-                notifSection.style.display = "none";
-            }
-        } catch (e) { 
-            console.error("無法載入通知列表", e); 
-        }
+            } else { notifSection.style.display = "none"; }
+        } catch (e) { console.error("無法載入通知"); }
     }
 
-    // --- 查詢功能 ---
+    async function clearNotifications() {
+        if (!confirm("確定要清除所有命中通知紀錄嗎？")) return;
+        try {
+            const res = await fetch(`${API_BASE}/notifications`, { method: "DELETE" });
+            if (res.ok) {
+                document.getElementById("notif-section").style.display = "none";
+                document.getElementById("notification-list").innerHTML = "";
+            }
+        } catch (e) { alert("清除失敗"); }
+    }
+
     async function fetchData() {
         const start = document.getElementById("start_date").value;
         const end = document.getElementById("end_date").value;
-        const keyword = document.getElementById("keyword").value;
-        // 使用 API_BASE 代替 localhost
-        let url = `${API_BASE}/filter?start_date=${start}&end_date=${end}&keyword=${encodeURIComponent(keyword)}`;
-        const res = await fetch(url);
-        currentData = await res.json();
-        const tbody = document.querySelector("#results tbody");
-        tbody.innerHTML = "";
+        const company = document.getElementById("search_company").value;
+        const keyword = document.getElementById("search_keyword").value;
 
-        currentData.forEach(r => {
-            const tr = document.createElement("tr");
-            const contentCell = document.createElement("td");
-            contentCell.className = "content-cell";
-            contentCell.textContent = "展開內文";
-            contentCell.onclick = () => {
-                if (contentCell.classList.contains("expanded")) {
-                    contentCell.classList.remove("expanded");
-                    contentCell.textContent = "展開內文";
-                } else {
-                    contentCell.classList.add("expanded");
-                    contentCell.textContent = r.content || "無內容";
-                }
-            };
+        // 組合多參數 URL
+        let url = `${API_BASE}/filter?start_date=${start}&end_date=${end}` + 
+                `&company=${encodeURIComponent(company)}` + 
+                `&keyword=${encodeURIComponent(keyword)}`;
 
-            tr.innerHTML = `
-                <td>${r.market}</td>
-                <td>${r.company_code}<br>${r.company_name}</td>
-                <td>${r.publish_date}<br>${r.publish_time}</td>
-                <td>${r.subject}</td>
-            `;
-            tr.appendChild(contentCell);
-            tbody.appendChild(tr);
-        });
-        document.getElementById("exportBtn").style.display = currentData.length > 0 ? "inline-block" : "none";
+        try {
+            const res = await fetch(url);
+            currentData = await res.json();
+            const tbody = document.querySelector("#results tbody");
+            tbody.innerHTML = "";
+
+            currentData.forEach(r => {
+                const tr = document.createElement("tr");
+                const contentCell = document.createElement("td");
+                contentCell.className = "content-cell";
+                contentCell.textContent = "展開內文";
+                contentCell.onclick = () => {
+                    if (contentCell.classList.contains("expanded")) {
+                        contentCell.classList.remove("expanded");
+                        contentCell.textContent = "展開內文";
+                    } else {
+                        contentCell.classList.add("expanded");
+                        contentCell.textContent = r.content || "無內容";
+                    }
+                };
+
+                tr.innerHTML = `
+                    <td>${r.market}</td>
+                    <td>${r.company_code}<br>${r.company_name}</td>
+                    <td>${r.publish_date}<br>${r.publish_time}</td>
+                    <td>${r.subject}</td>
+                `;
+                tr.appendChild(contentCell);
+                tbody.appendChild(tr);
+            });
+            document.getElementById("exportBtn").style.display = currentData.length > 0 ? "inline-block" : "none";
+        } catch (e) {
+            alert("查詢失敗，請檢查後端連線");
+        }
     }
 
     function exportToCSV() {
@@ -225,9 +296,8 @@
         ].join(","));
         const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.href = url;
+        link.href = URL.createObjectURL(blob);
         link.download = `mops_export.csv`;
         link.click();
     }
