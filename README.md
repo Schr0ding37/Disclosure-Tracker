@@ -20,10 +20,10 @@
   - `frontend`：Nginx 伺服靜態檔 (`frontend/`)，提供 `index.html` 與 `login.html`。
   - `scheduler`：Ofelia 定時呼叫 `fetcher/fetch_daily.py`（14:00、22:00）。
 - 初次啟動時 backend 會建立資料表並生成預設 `Admin` 帳號。
-- API 健康檢查：`GET http://localhost:8000/health`。
+- API 健康檢查：`GET http://localhost:9000/health`。
 
 ## 🚀 快速開始
-1. **環境需求**：Docker + Docker Compose，確保 5432/8000/8080 port 未被佔用。
+1. **環境需求**：Docker + Docker Compose，確保 5432/9000/8080 port 未被佔用。
 2. **取得程式碼**
    ```bash
    git clone https://github.com/你的帳號/Disclosure-Tracker.git
@@ -33,7 +33,7 @@
    ```bash
    docker-compose up -d --build
    docker-compose ps              # 確認容器都在 Up 狀態
-   curl http://localhost:8000/health
+   curl http://localhost:9000/health
    ```
    首次啟動 backend 會先跑一次 `fetch_daily.py` 再啟動 API。
 4. **登入**
@@ -62,7 +62,7 @@
 - **瀏覽器驗證**：開啟 `test_export.html` → 點擊 `Test Export` 查看結果。
 - **API 驗證**：取得 token 後可直接呼叫  
   ```bash
-  curl -H "Authorization: Bearer <token>" http://localhost:8000/notifications
+  curl -H "Authorization: Bearer <token>" http://localhost:9000/notifications
   ```
 
 ## 🧭 排程與維運
@@ -78,7 +78,7 @@
   - `login.html`：登入頁面。
   - `index.html`：主儀表板。
   - `style.css`、`assets/`：樣式與圖示。
-  - `nginx.conf`：前端 Nginx 設定，將 `/api` 代理到 backend:8000。
+  - `nginx.conf`：前端 Nginx 設定，將 `/api` 代理到 backend:9000。
 - `keywords.txt`：監控關鍵字清單（由 UI 或匯入流程寫入）。
 - `test_export.*`：匯出回歸測試腳本與 HTML 測試頁。
 - `postgres_data/`：PostgreSQL 持久化資料目錄。

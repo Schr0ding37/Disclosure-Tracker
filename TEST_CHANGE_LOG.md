@@ -31,12 +31,12 @@
     -   Command: `docker-compose up -d`
     -   Status: All containers (`mops-db`, `major_frontend`, `major_backend`, `mops_scheduler`) started successfully.
 2.  **Backend Connectivity**:
-    -   **Endpoint `/keywords`**: Tested via `curl http://localhost:8000/keywords`.
+    -   **Endpoint `/keywords`**: Tested via `curl http://localhost:9000/keywords`.
         -   Result: returned JSON array of keywords (`["資安", "網路攻擊"...]`). 🟢 Pass.
-    -   **Endpoint `/notifications`**: Tested via `curl http://localhost:8000/notifications`.
+    -   **Endpoint `/notifications`**: Tested via `curl http://localhost:9000/notifications`.
         -   Result: returned JSON array of notifications. 🟢 Pass.
 3.  **Frontend-Backend Integration**:
-    -   Verified Nginx configuration (`frontend/nginx.conf`) correctly proxies `/api` requests to backend service on port 8000.
+    -   Verified Nginx configuration (`frontend/nginx.conf`) correctly proxies `/api` requests to backend service on port 9000.
     -   Validated frontend JS logic uses `/api` base path which aligns with the proxy config.
 
 ### 📝 Notes

@@ -28,7 +28,7 @@ services:
       - ./fetcher:/app/fetcher
       - ./keywords.txt:/app/keywords.txt:rw  # 掛載關鍵字檔案，設定為可讀寫
     ports:
-      - "8000:8000"
+      - "9000:9000"
     command: >
       sh -c "
       until python3 -c 'import socket; s = socket.socket(); s.connect((\"db\", 5432))' 2>/dev/null; do
@@ -37,7 +37,7 @@ services:
       echo '資料庫已就緒，開始抓取資料...' &&
       python3 /app/fetcher/fetch_daily.py && 
       echo '抓取完成，啟動 API...' &&
-      uvicorn main:app --host 0.0.0.0 --port 8000"
+      uvicorn main:app --host 0.0.0.0 --port 9000"
 
   frontend:
     image: nginx:alpine
