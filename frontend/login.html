@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disclosure-Tracker | Login</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Inherit from style.css but define local overrides if needed */
+            --login-bg: #ffffff;
+            --login-input-bg: #f7f7f7;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Open Sans', 'Helvetica Neue', Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            background-color: var(--login-bg);
+        }
+
+        /* Split Screen Layout */
+        .split-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Left Panel - Hero Image */
+        .left-panel {
+            flex: 1;
+            background-image: url('assets/login-hero.png');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: none;
+            /* Hidden on mobile by default */
+        }
+
+        .left-panel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.1) 100%);
+            /* Professional gradient overlay */
+        }
+
+        /* Right Panel - Login Form */
+        .right-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--login-bg);
+            padding: 40px;
+            position: relative;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 380px;
+            /* Slightly narrower for modern look */
+        }
+
+        .login-logo {
+            margin-bottom: 40px;
+        }
+
+        /* Logo sizing */
+        .login-logo img {
+            height: 36px;
+            /* Standard header height usually */
+            width: auto;
+        }
+
+        .login-title {
+            color: var(--primary);
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-size: 32px;
+            /* Larger, bolder */
+            font-family: 'Open Sans', sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .login-subtitle {
+            color: var(--text-muted);
+            margin-bottom: 48px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            color: var(--primary);
+            /* Darker labels */
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-body);
+            /* From style.css or fallback */
+            border: 1px solid #d0d0d0;
+            /* Subtle border */
+            border-radius: 2px;
+            /* Sharp corners per brand */
+            color: var(--primary);
+            outline: none;
+            transition: all 0.2s ease;
+            font-size: 15px;
+            box-sizing: border-box;
+            height: 48px;
+            /* Taller touch targets */
+        }
+
+        .form-group input:focus {
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+
+        .form-group input::placeholder {
+            color: #a0a0a0;
+        }
+
+        .btn-login {
+            width: 100%;
+            height: 48px;
+            padding: 0 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 2px;
+            /* Sharp corners */
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-login:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-login:disabled {
+            background-color: #e0e0e0;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .error-msg {
+            color: var(--danger);
+            font-size: 14px;
+            margin-top: 24px;
+            display: none;
+            background: #fff1f0;
+            padding: 12px;
+            border-radius: 2px;
+            text-align: center;
+            border: 1px solid #ffccc7;
+        }
+
+        .login-footer {
+            margin-top: 64px;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+        }
+
+        /* Desktop Styles */
+        @media (min-width: 1024px) {
+            .left-panel {
+                display: block;
+                flex: 1.5;
+                /* More image focus */
+            }
+
+            .right-panel {
+                flex: 1;
+                max-width: 600px;
+                /* Cap width on ultra-wide */
+                box-shadow: -20px 0 50px rgba(0, 0, 0, 0.03);
+                /* softer shadow */
+            }
+
+            .login-wrapper {
+                padding: 0 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="split-container">
+        <!-- Left Side: Hero Image -->
+        <div class="left-panel"></div>
+
+        <!-- Right Side: Login Form -->
+        <div class="right-panel">
+            <div class="login-wrapper">
+                <div class="login-logo">
+                    <img src="assets/logo.svg" alt="Deloitte" style="height: 48px;">
+                </div>
+                <h2 class="login-title">Sign In</h2>
+                <p class="login-subtitle">Disclosure Tracker System</p>
+
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="username">Email or Username</label>
+                        <input type="text" id="username" required placeholder="Enter your username">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required placeholder="Enter your password">
+                    </div>
+                    <button type="submit" class="btn-login">Sign In</button>
+                    <div id="error-msg" class="error-msg"><i class="fa-solid fa-circle-exclamation"></i> Invalid
+                        credentials. Please try again.</div>
+                </form>
+
+                <div class="login-footer">
+                    &copy; 2024 Deloitte. All rights reserved.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.querySelector('.btn-login');
+            const errorMsg = document.getElementById('error-msg');
+            const userIn = document.getElementById('username').value;
+            const passIn = document.getElementById('password').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 登入中...';
+            errorMsg.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('username', userIn);
+            formData.append('password', passIn);
+
+            try {
+                const res = await fetch(`${API_BASE}/token`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error('Auth failed');
+
+                const data = await res.json();
+                localStorage.setItem('access_token', data.access_token);
+                // Decode token to get role
+                const payload = JSON.parse(atob(data.access_token.split('.')[1]));
+                localStorage.setItem('user_role', payload.role);
+                localStorage.setItem('username', payload.sub);
+
+                window.location.href = 'index.html';
+
+            } catch (err) {
+                console.error(err);
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = '登入';
+            }
+        }
+    </script>
+</body>
+
+</html>

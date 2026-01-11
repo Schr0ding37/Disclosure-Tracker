@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50">
+    <style>
+        .text { font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; font-size: 32px; fill: #000000; }
+        .dot { fill: #86BC24; }
+    </style>
+    <text x="5" y="35" class="text">Deloitte</text>
+    <circle cx="145" cy="31" r="5" class="dot"/>
+</svg>

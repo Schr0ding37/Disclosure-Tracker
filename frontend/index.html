@@ -1,348 +1,1270 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
+
 <head>
     <meta charset="utf-8">
-    <title>Disclosure-Tracker | 重大訊息監控系統</title>
-    <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; margin: 20px; background-color: #f8f9fa; color: #333; }
-        .container { max-width: 1200px; margin: auto; }
-        .section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2, h3 { color: #333; border-left: 5px solid #007bff; padding-left: 10px; margin-top: 0; }
-        
-        /* 通知列表樣式 */
-        #notif-section { border: 2px solid #ff4d4d; background-color: #fff9f9; }
-        #notification-list { 
-            list-style: none; 
-            padding: 0; 
-            max-height: 500px; /* 設定一個你覺得舒適的高度，例如 500px */
-            overflow-y: auto;  /* 超過高度時顯示捲軸 */
-            border: 1px solid #eee;
-        }
-        /* 修改通知項目樣式，移除原本的 flex 限制以利內文顯示 */
-        .notification-item:hover {
-            background-color: #fff0f0; /* 滑鼠移上去有一點顏色變化 */
-        }
-        .notif-tag {
-            background: #ff4d4d;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-right: 8px;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 4px;
-        }
-
-        /* 標籤管理介面 */
-        .kw-container {
-            display: flex; flex-wrap: wrap; gap: 8px; padding: 12px;
-            border: 1px solid #ddd; border-radius: 4px; background: #fafafa;
-            min-height: 45px; margin-bottom: 10px;
-        }
-        .kw-tag {
-            background: #007bff; color: white; padding: 5px 12px; border-radius: 20px;
-            display: flex; align-items: center; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        .kw-tag .remove-btn { margin-left: 8px; cursor: pointer; color: #fff; font-weight: bold; opacity: 0.7; }
-        .kw-tag .remove-btn:hover { opacity: 1; }
-        
-        .kw-input-group { display: flex; gap: 8px; margin-bottom: 10px; }
-        #kw-editor-panel { display: none; margin-top: 15px; border-top: 1px dashed #ddd; padding-top: 15px; }
-
-        /* 按鈕與控制區 */
-        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-        input[type="text"], input[type="date"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex-grow: 1; }
-        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; transition: 0.2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn-query { background-color: #007bff; }
-        .btn-export { background-color: #28a745; }
-        .btn-save { background-color: #28a745; width: 100%; margin-top: 5px; }
-        .btn-clear { background-color: #dc3545; font-size: 12px; }
-        .btn-toggle-kw { background-color: #6c757d; font-size: 14px; }
-
-        /* 表格樣式 */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
-        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
-        th { background-color: #f1f3f5; position: sticky; top: 0; }
-        td.content-cell { cursor: pointer; color: #007bff; text-decoration: underline; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        td.content-cell.expanded { white-space: normal; color: black; text-decoration: none; word-break: break-all; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disclosure-Tracker | 顧問級重訊監控</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 引入 Font Awesome 用於圖示 (使用 CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
-<div class="container">
-    <h2>📈 股市重大訊息主動監控系統</h2>
 
-    <div id="notif-section" class="section" style="display:none;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>🔔 關鍵字命中通知 (最新 20 筆)</h3>
-            <button class="btn btn-clear" onclick="clearNotifications()">🗑️ 清除所有通知</button>
-        </div>
-        <div id="notification-list"></div>
-    </div>
 
-    <div class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>🛠️ 系統監控設定</h3>
-            <button class="btn btn-toggle-kw" id="toggleKwBtn" onclick="toggleKwPanel()">⚙️ 編輯監控關鍵字</button>
-        </div>
-        
-        <div id="kw-editor-panel">
-            <p style="font-size: 14px; color: #666;">新增資安或重大事件關鍵字，儲存後將立即觸發背景掃描。</p>
-            <div class="kw-input-group">
-                <input type="text" id="new_kw_input" placeholder="輸入關鍵字後按 Enter (例如: 網路攻擊)">
-                <button class="btn btn-query" onclick="addKeywordTag()">➕ 加入</button>
+    <div class="dashboard-container">
+
+        <!-- 1. Header Section -->
+        <!-- 1. Header Section -->
+        <header class="app-header">
+            <div class="brand">
+                <img src="assets/logo.svg" alt="Deloitte" style="height: 30px; margin-right: 15px;">
+                <div class="brand-title"
+                    style="border-left: 1px solid #ccc; padding-left: 15px; font-weight: 300; font-size: 1.2rem;">
+                    Disclosure Tracker
+                </div>
             </div>
-            <div id="kw_list_tags" class="kw-container"></div>
-            <button class="btn btn-save" onclick="saveServerKeywords()">💾 儲存並更新監控清單</button>
-            <p id="save-status" style="margin-top: 8px; font-weight: bold;"></p>
+            <div class="header-meta">
+                <span id="current-time">Loading time...</span>
+                <span style="margin: 0 10px;">|</span>
+                <span style="color: var(--success); font-weight: 600;"><i class="fa-solid fa-circle-check"></i> System
+                    Operational</span>
+            </div>
+        </header>
+
+        <!-- Admin Only Section -->
+        <div id="admin-section" class="card"
+            style="display: none; margin-bottom: var(--space-lg); border: 1px solid var(--accent);">
+            <div class="card-header" style="background: rgba(59, 130, 246, 0.1);">
+                <span><i class="fa-solid fa-users-gear"></i> 此區域僅管理員可見：用戶管理</span>
+            </div>
+            <div class="card-body">
+                <div class="admin-controls">
+                    <div class="form-group">
+                        <label for="new-username">Username</label>
+                        <input type="text" id="new-username" placeholder="新用戶帳號">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">Password</label>
+                        <input type="password" id="new-password" placeholder="密碼">
+                    </div>
+                    <div class="form-group">
+                        <label for="new-role">Role</label>
+                        <select id="new-role"
+                            style="padding: 10px; background: #FFF; border: 1px solid var(--border); border-radius: var(--radius-sm); width: 100%;">
+                            <option value="user">User (僅查詢)</option>
+                            <option value="admin">Admin (管理員)</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="createNewUser()">
+                        <i class="fa-solid fa-user-plus"></i> 新增
+                    </button>
+                </div>
+
+                <div class="user-list-controls">
+                    <button class="btn btn-outline btn-sm" onclick="toggleUserList()" id="toggle-list-btn">
+                        <i class="fa-solid fa-list"></i> 顯示使用者列表
+                    </button>
+                </div>
+
+                <div id="user-list-container" style="display: none;">
+                    <table class="table" style="width: 100%;">
+                        <thead>
+                            <tr style="text-align: left;">
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div class="section">
-        <h3>🔍 歷史資料查詢</h3>
-        <div class="controls">
-            <label>日期: <input type="date" id="start_date"> ~ <input type="date" id="end_date"></label>
-        </div>
-        <div class="controls" style="margin-top: 10px;">
-            <input type="text" id="search_company" placeholder="輸入公司名稱或代號 (如: 台積電/2330)" style="flex: 1;">
-            <input type="text" id="search_keyword" placeholder="輸入關鍵字 (如: 資安/配息)" style="flex: 1;">
-            <button class="btn btn-query" onclick="fetchData()">執行查詢</button>
-            <button id="exportBtn" class="btn btn-export" style="display:none;" onclick="exportToCSV()">匯出 CSV</button>
-        </div>
+        <script>
+            async function createNewUser() {
+                const u = document.getElementById('new-username').value;
+                const p = document.getElementById('new-password').value;
+                const r = document.getElementById('new-role').value;
 
-        <table id="results">
-            <thead>
-                <tr>
-                    <th>市場</th>
-                    <th>公司</th>
-                    <th>日期時間</th>
-                    <th>主旨</th>
-                    <th>內文</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
+                if (!u || !p) return alert("請輸入帳號密碼");
 
-<script>
-    let currentData = [];
-    let activeKeywords = [];
-    
-    // 使用 Nginx Reverse Proxy，統一透過 /api 路徑存取後端
-    // 這樣可以避免 CORS 問題，也不需要開啟 8000 port
-    const API_BASE = '/api';
-
-    window.onload = () => {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById("start_date").value = today;
-        document.getElementById("end_date").value = today;
-        loadServerKeywords();
-        loadNotifications();
-    };
-
-    // --- 顯示/隱藏 面板邏輯 ---
-    function toggleKwPanel() {
-        const panel = document.getElementById("kw-editor-panel");
-        const btn = document.getElementById("toggleKwBtn");
-        if (panel.style.display === "none" || panel.style.display === "") {
-            panel.style.display = "block";
-            btn.textContent = "✖️ 關閉編輯器";
-        } else {
-            panel.style.display = "none";
-            btn.textContent = "⚙️ 編輯監控關鍵字";
-        }
-    }
-
-    // --- 關鍵字標籤邏輯 ---
-    async function loadServerKeywords() {
-    try {
-        const res = await fetch(`${API_BASE}/keywords`);
-        if (!res.ok) throw new Error("Network response was not ok");
-        
-        const data = await res.json();
-        
-        // 確保後端回傳的是物件中的 keywords 陣列
-        if (data && data.keywords) {
-            activeKeywords = data.keywords; // 將後端資料存入前端全域變數
-            console.log("成功載入關鍵字:", activeKeywords); // 除錯用
-            renderKeywordTags(); // 務必呼叫渲染函數，標籤才會顯示出來
-        }
-    } catch (e) { 
-        console.error("無法載入關鍵字:", e); 
-        document.getElementById("kw_list_tags").innerHTML = '<span style="color:red">無法連線至後端獲取清單</span>';
-    }
-}
-
-    function renderKeywordTags() {
-        const container = document.getElementById("kw_list_tags");
-        container.innerHTML = activeKeywords.length === 0 ? '<span style="color:#999">尚未設定監控關鍵字</span>' : '';
-        activeKeywords.forEach((kw, index) => {
-            const tag = document.createElement("div");
-            tag.className = "kw-tag";
-            tag.innerHTML = `${kw}<span class="remove-btn" onclick="removeKeywordTag(${index})">×</span>`;
-            container.appendChild(tag);
-        });
-    }
-
-    function addKeywordTag() {
-        const input = document.getElementById("new_kw_input");
-        const val = input.value.trim();
-        if (val && !activeKeywords.includes(val)) {
-            activeKeywords.push(val);
-            renderKeywordTags();
-            input.value = "";
-        }
-    }
-
-    document.getElementById("new_kw_input").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") addKeywordTag();
-    });
-
-    function removeKeywordTag(index) {
-        activeKeywords.splice(index, 1);
-        renderKeywordTags();
-    }
-
-    async function saveServerKeywords() {
-        const status = document.getElementById("save-status");
-        try {
-            const res = await fetch(`${API_BASE}/keywords`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ keywords: activeKeywords })
-            });
-            if (res.ok) {
-                status.textContent = "✅ 設定儲存成功！正在啟動背景掃描...";
-                status.style.color = "green";
-                setTimeout(() => {
-                    status.textContent = "";
-                    loadNotifications();
-                }, 5000);
+                try {
+                    const res = await fetch(`${API_BASE}/users`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ username: u, password: p, role: r })
+                    });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        alert("Error: " + err.detail);
+                    } else {
+                        alert("用戶新增成功！");
+                        document.getElementById('new-username').value = '';
+                        document.getElementById('new-password').value = '';
+                        loadUsersList();
+                    }
+                } catch (e) {
+                    alert("Failed to create user");
+                }
             }
-        } catch (e) { 
-            status.textContent = "❌ 儲存失敗"; status.style.color = "red";
-        }
-    }
 
-    // --- 通知與查詢 (保持不變) ---
-    async function loadNotifications() {
-        try {
-            const res = await fetch(`${API_BASE}/notifications`);
-            const alerts = await res.json();
-            const notifDiv = document.getElementById("notification-list");
-            const notifSection = document.getElementById("notif-section");
+            function toggleUserList() {
+                const container = document.getElementById('user-list-container');
+                const btn = document.getElementById('toggle-list-btn');
+                const isHidden = container.style.display === 'none';
 
-            if (alerts && alerts.length > 0) {
-                notifSection.style.display = "block";
-                notifDiv.innerHTML = alerts.map((a, index) => `
-                    <div class="notification-item-container" style="border-bottom: 1px solid #eee;">
-                        <div class="notification-item" onclick="toggleNotifContent(${index})" style="cursor: pointer; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <span class="notif-tag">${a.matched_keyword}</span>
-                                <strong>${a.company_name}</strong> (${a.company_code}) 
-                                <br><span style="font-size: 14px; color: #555;">${a.subject}</span>
-                            </div>
-                            <div style="text-align: right; min-width: 150px;">
-                                <small style="color: #888;">${a.publish_date} ${a.publish_time}</small>
-                                <div style="font-size: 12px; color: #007bff; margin-top: 4px;">▼ 點擊查看內文</div>
+                if (isHidden) {
+                    container.style.display = 'block';
+                    btn.innerHTML = '<i class="fa-solid fa-list-check"></i> 隱藏使用者列表';
+                    loadUsersList();
+                } else {
+                    container.style.display = 'none';
+                    btn.innerHTML = '<i class="fa-solid fa-list"></i> 顯示使用者列表';
+                }
+            }
+
+            async function loadUsersList() {
+                try {
+                    const res = await fetch(`${API_BASE}/users`, {
+                        headers: getAuthHeaders()
+                    });
+                    const users = await res.json();
+                    const tbody = document.getElementById('user-list-body');
+                    tbody.innerHTML = users.map(u => `
+                        <tr>
+                            <td>${u.id}</td>
+                            <td>${u.username}</td>
+                            <td><span class="badge ${u.role === 'admin' ? 'bg-primary' : 'bg-secondary'}">${u.role}</span></td>
+                            <td>${u.created_at}</td>
+                        </tr>
+                    `).join('');
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        </script>
+
+
+
+        <!-- 2. Main Grid Layout -->
+        <div class="dashboard-grid">
+
+            <!-- Left Sidebar / Panel Area -->
+            <aside class="dashboard-sidebar">
+
+
+
+                <!-- Keyword Management Card (Collapsible) -->
+                <div class="card">
+                    <div class="card-header collapsible-header" onclick="toggleCard(this)">
+                        <span><i class="fa-solid fa-tags"></i> 關鍵字管理</span>
+                        <i class="fa-solid fa-chevron-down collapsible-icon"></i>
+                    </div>
+                    <div class="card-body collapsible-content">
+                        <div class="form-group">
+                            <div style="display: flex; gap: 5px;">
+                                <input type="text" id="new_kw_input" placeholder="新增關鍵字 (Enter)">
+                                <button class="btn btn-primary btn-sm" onclick="addKeywordTag()"><i
+                                        class="fa-solid fa-plus"></i></button>
                             </div>
                         </div>
-                        <div id="notif-content-${index}" style="display: none; padding: 15px; background: #fff; font-size: 14px; line-height: 1.6; border-top: 1px dashed #ddd; white-space: pre-wrap; color: #333;">
-                            ${a.content || '無內文資料'}
+
+                        <div id="kw_list_tags" class="kw-wrapper"></div>
+
+                        <div class="mt-4"
+                            style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-outline btn-sm" style="flex: 1; min-width: 100px;"
+                                onclick="selectAllKeywords()">
+                                <i class="fa-solid fa-check-double"></i> 全選
+                            </button>
+                            <button class="btn btn-outline btn-sm" style="flex: 1; min-width: 100px;"
+                                onclick="deselectAllKeywords()">
+                                <i class="fa-solid fa-xmark"></i> 取消全選
+                            </button>
+                            <button class="btn btn-success btn-sm" style="width: 100%;" onclick="saveServerKeywords()">
+                                <i class="fa-solid fa-floppy-disk"></i> 儲存設定
+                            </button>
+                        </div>
+
+                        <!-- Export/Import Data Package Section -->
+                        <div class="mt-4"
+                            style="border-top: 1px solid var(--border); padding-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-outline btn-sm" style="flex: 1; min-width: 120px;"
+                                onclick="exportDataPackage()">
+                                <i class="fa-solid fa-file-export"></i> 匯出資料包
+                            </button>
+                            <button class="btn btn-outline btn-sm" style="flex: 1; min-width: 120px;"
+                                onclick="document.getElementById('import-file-input').click()">
+                                <i class="fa-solid fa-file-import"></i> 匯入資料包
+                            </button>
+                        </div>
+                        <input type="file" id="import-file-input" accept=".dtt" style="display: none;"
+                            onchange="importDataPackage(event)">
+                        <div id="import-status" class="text-sm mt-4" style="text-align: center; height: 20px;"></div>
+                        <div id="save-status" class="text-sm mt-4" style="text-align: center; height: 20px;"></div>
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- Right Main Content Area -->
+            <main class="dashboard-main">
+
+                <!-- Stats Overview (Moved to Top of Main) -->
+                <div class="stats-overview-top">
+                    <div class="stat-card stat-card-clickable" data-period="today"
+                        style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white;"
+                        onclick="showAlertDetails('today')">
+                        <div class="stat-icon"><i class="fa-solid fa-bell"></i></div>
+                        <div class="stat-value" id="val-today">0</div>
+                        <div class="stat-label">今日資安警示</div>
+                    </div>
+                    <div class="stat-card stat-card-clickable" data-period="5days"
+                        style="background: linear-gradient(135deg, #86BC24 0%, #6e9a1e 100%); color: white;"
+                        onclick="showAlertDetails('5days')">
+                        <div class="stat-icon"><i class="fa-solid fa-calendar-week"></i></div>
+                        <div class="stat-value" id="val-5days">0</div>
+                        <div class="stat-label">近5日警示</div>
+                    </div>
+                    <div class="stat-card stat-card-clickable" data-period="30days"
+                        style="background: linear-gradient(135deg, #444444 0%, #222222 100%); color: white;"
+                        onclick="showAlertDetails('30days')">
+                        <div class="stat-icon"><i class="fa-solid fa-calendar-days"></i></div>
+                        <div class="stat-value" id="val-30days">0</div>
+                        <div class="stat-label">近30日警示</div>
+                    </div>
+                </div>
+
+                <!-- [NEW] Visualizations Section -->
+                <div class="charts-container">
+                    <!-- Row 1: Trend Chart (Full Width) -->
+                    <div class="card chart-card-full">
+                        <div class="card-header">
+                            <span><i class="fa-solid fa-chart-line"></i> 30日警示趨勢</span>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="trendChart"></canvas>
                         </div>
                     </div>
-                `).join('');
-            } else {
-                notifSection.style.display = "none";
-            }
-        } catch (e) { console.error("無法載入通知列表", e); }
-    }
 
-    // 新增一個切換顯示的函數
-    function toggleNotifContent(index) {
-        const contentDiv = document.getElementById(`notif-content-${index}`);
-        if (contentDiv.style.display === "none") {
-            contentDiv.style.display = "block";
+                    <!-- Row 2: Pie Charts (Split) -->
+                    <div class="charts-row">
+                        <div class="card chart-card-half">
+                            <div class="card-header">
+                                <span><i class="fa-solid fa-chart-pie"></i> 熱門資安關鍵字 (Top 5)</span>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="keywordChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="card chart-card-half">
+                            <div class="card-header">
+                                <span><i class="fa-solid fa-chart-pie"></i> 警示種類分佈</span>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="alertTypeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notifications Section (Collapsible) -->
+                <div class="card" id="notif-section" style="display: none;">
+                    <div class="card-header collapsible-header" onclick="toggleCard(this)"
+                        style="background: #fff1f2; color: #9f1239; border-bottom-color: #fecdd3;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-bell"></i>
+                            <span>即時警示通知</span>
+                            <span class="notif-badge" id="notif-badge-count" style="background: #e11d48;">0</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button class="btn btn-danger btn-sm"
+                                onclick="event.stopPropagation(); clearNotifications();"
+                                style="padding: 2px 8px; font-size: 12px; height: 24px;">清除</button>
+                            <i class="fa-solid fa-chevron-down collapsible-icon"></i>
+                        </div>
+                    </div>
+                    <div class="collapsible-content">
+                        <ul id="notification-list" class="notification-list">
+                            <!-- JS injected items -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Query & Data Table Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <span><i class="fa-solid fa-search"></i> 歷史資料查詢</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Search Form -->
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>日期範圍</label>
+                                <div class="date-range-inputs" style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="date" id="start_date">
+                                    <span class="text-muted">-</span>
+                                    <input type="date" id="end_date">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>搜尋公司</label>
+                                <input type="text" id="search_company" placeholder="代號或名稱 (例如 2330)">
+                            </div>
+                            <div class="form-group">
+                                <label>內文關鍵字</label>
+                                <input type="text" id="search_keyword" placeholder="例如: 資安、營收">
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-accent" onclick="fetchData()" style="width: 100%;">
+                                    <i class="fa-solid fa-magnifying-glass"></i> 查詢
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Table -->
+                    <div class="table-container">
+                        <table id="results">
+                            <thead>
+                                <tr>
+                                    <th width="80">市場</th>
+                                    <th width="150">公司</th>
+                                    <th width="130">時間</th>
+                                    <th>主旨</th>
+                                    <th width="120">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="results-body">
+                                <!-- JS injected rows -->
+                                <tr>
+                                    <td colspan="5"
+                                        style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        <i class="fa-solid fa-inbox"
+                                            style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
+                                        請設定條件並開始查詢
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Export Button Footer -->
+                    <div id="table-footer" class="card-body"
+                        style="border-top: 1px solid var(--border); display: none; text-align: right;">
+                        <button class="btn btn-outline btn-sm" onclick="exportToCSV()">
+                            <i class="fa-solid fa-file-csv"></i> 匯出 CSV
+                        </button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Manage Keywords Modal -->
+    <div id="keyword-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>管理關鍵字</span>
+                <button class="btn" style="padding: 0; background: none; color: var(--text-muted);"
+                    onclick="closeKeywordModal()">
+                    <i class="fa-solid fa-xmark" style="font-size: 1.2rem;"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-kw-list" class="kw-checkbox-list">
+                    <!-- Checkboxes injected here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeKeywordModal()">取消</button>
+                <button class="btn btn-primary" onclick="applyKeywordChanges()">確認修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Details Modal -->
+    <div id="alert-details-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+            <div class="modal-header">
+                <span id="alert-modal-title">警示詳情</span>
+                <button class="btn" style="padding: 0; background: none; color: var(--text-muted);"
+                    onclick="closeAlertDetailsModal()">
+                    <i class="fa-solid fa-xmark" style="font-size: 1.2rem;"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; max-height: 70vh;">
+                <div id="alert-details-content">
+                    <!-- Alert details will be injected here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeAlertDetailsModal()">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentData = [];
+        let activeKeywords = [];
+
+        // Chart instances for proper cleanup
+        let trendChartInstance = null;
+        let keywordChartInstance = null;
+        let alertTypeChartInstance = null;
+
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function highlightText(text, keyword) {
+            if (!text || !keyword) return text || '';
+            const pattern = new RegExp(`(${escapeRegex(keyword)})`, 'gi');
+            return (text || '').replace(pattern, '<span class="highlight">$1</span>');
+        }
+
+        // --- Initialization ---
+        window.onload = () => {
+            updateTime();
+            setInterval(updateTime, 60000);
+
+            // 1. Default Defaults - 預設從一個月前開始
+            const today = new Date().toISOString().split('T')[0];
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            const oneMonthAgoStr = oneMonthAgo.toISOString().split('T')[0];
+            let start = oneMonthAgoStr;
+            let end = today;
+            let company = "";
+            let keyword = "";
+
+            // 2. Check URL Params (Persistence)
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('start_date')) start = params.get('start_date');
+            if (params.has('end_date')) end = params.get('end_date');
+            if (params.has('company')) company = params.get('company');
+            if (params.has('keyword')) keyword = params.get('keyword');
+
+            // 3. Populate Inputs
+            document.getElementById("start_date").value = start;
+            document.getElementById("end_date").value = end;
+            document.getElementById("search_company").value = company;
+            document.getElementById("search_keyword").value = keyword;
+
+            loadServerKeywords();
+            loadNotifications();
+            loadSecurityStats(); // Load charts and stats
+
+            // 4. Auto-fetch Data (Table)
+            fetchData(false); // Pass false to avoid pushing state again on initial load (optional, but cleaner)
+        };
+
+
+
+        // Check if already logged in (optional persistence)
+        if (!localStorage.getItem('access_token')) {
+            window.location.href = 'login.html';
         } else {
-            contentDiv.style.display = "none";
+            checkAdminRole();
         }
-    }
 
-    async function clearNotifications() {
-        if (!confirm("確定要清除所有命中通知紀錄嗎？")) return;
-        try {
-            const res = await fetch(`${API_BASE}/notifications`, { method: "DELETE" });
-            if (res.ok) {
-                document.getElementById("notif-section").style.display = "none";
-                document.getElementById("notification-list").innerHTML = "";
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user_role');
+            localStorage.removeItem('username');
+            window.location.href = 'login.html';
+        }
+
+        function checkAdminRole() {
+            const role = localStorage.getItem('user_role');
+            const username = localStorage.getItem('username');
+
+            // Update Header User Info
+            const headerMeta = document.querySelector('.header-meta');
+            const userSpan = document.createElement('span');
+            userSpan.innerHTML = ` | <i class="fa-solid fa-user"></i> ${username} <a href="#" onclick="logout()" style="color: var(--danger); margin-left: 8px; text-decoration: none;">[Logout]</a>`;
+            headerMeta.appendChild(userSpan);
+
+            if (role === 'admin') {
+                document.getElementById('admin-section').style.display = 'block';
+                loadUsersList();
             }
-        } catch (e) { alert("清除失敗"); }
-    }
-
-    async function fetchData() {
-        const start = document.getElementById("start_date").value;
-        const end = document.getElementById("end_date").value;
-        const company = document.getElementById("search_company").value;
-        const keyword = document.getElementById("search_keyword").value;
-
-        // 組合多參數 URL
-        let url = `${API_BASE}/filter?start_date=${start}&end_date=${end}` + 
-                `&company=${encodeURIComponent(company)}` + 
-                `&keyword=${encodeURIComponent(keyword)}`;
-
-        try {
-            const res = await fetch(url);
-            currentData = await res.json();
-            const tbody = document.querySelector("#results tbody");
-            tbody.innerHTML = "";
-
-            currentData.forEach(r => {
-                const tr = document.createElement("tr");
-                const contentCell = document.createElement("td");
-                contentCell.className = "content-cell";
-                contentCell.textContent = "展開內文";
-                contentCell.onclick = () => {
-                    if (contentCell.classList.contains("expanded")) {
-                        contentCell.classList.remove("expanded");
-                        contentCell.textContent = "展開內文";
-                    } else {
-                        contentCell.classList.add("expanded");
-                        contentCell.textContent = r.content || "無內容";
-                    }
-                };
-
-                tr.innerHTML = `
-                    <td>${r.market}</td>
-                    <td>${r.company_code}<br>${r.company_name}</td>
-                    <td>${r.publish_date}<br>${r.publish_time}</td>
-                    <td>${r.subject}</td>
-                `;
-                tr.appendChild(contentCell);
-                tbody.appendChild(tr);
-            });
-            document.getElementById("exportBtn").style.display = currentData.length > 0 ? "inline-block" : "none";
-        } catch (e) {
-            alert("查詢失敗，請檢查後端連線");
         }
-    }
 
-    function exportToCSV() {
-        const headers = ["市場", "公司代號", "公司名稱", "發言日期", "發言時間", "主旨", "內文"];
-        const rows = currentData.map(r => [
-            r.market, r.company_code, r.company_name, r.publish_date, r.publish_time,
-            `"${(r.subject || "").replace(/"/g, '""')}"`,
-            `"${(r.content || "").replace(/"/g, '""')}"`
-        ].join(","));
-        const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `mops_export.csv`;
-        link.click();
-    }
-</script>
+        function updateTime() {
+            const now = new Date();
+            document.getElementById("current-time").textContent =
+                now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // --- UI Interactions ---
+        function toggleCard(header) {
+            header.classList.toggle('collapsed');
+        }
+
+        // --- Feature: Keywords ---
+        function getAuthHeaders() {
+            const token = localStorage.getItem('access_token');
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+        }
+
+        async function loadServerKeywords() {
+            try {
+                const res = await fetch(`${API_BASE}/keywords`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                });
+                if (res.status === 401) { logout(); return; }
+                const data = await res.json();
+                if (data && data.keywords) {
+                    // Convert string array to object array if needed
+                    activeKeywords = data.keywords.map(kw =>
+                        typeof kw === 'string' ? { keyword: kw, active: true } : kw
+                    );
+                    renderKeywords();
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderKeywords() {
+            const container = document.getElementById("kw_list_tags");
+            if (activeKeywords.length === 0) {
+                container.innerHTML = '<span class="text-muted text-sm">無關鍵字</span>';
+                return;
+            }
+            container.innerHTML = '';
+            activeKeywords.forEach((kwObj, index) => {
+                const label = document.createElement("label");
+                label.className = "kw-checkbox-item";
+                label.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px; cursor: pointer;";
+                label.innerHTML = `
+                    <input type="checkbox" ${kwObj.active ? 'checked' : ''} onchange="toggleKeyword(${index})" style="cursor: pointer;">
+                    <span style="flex: 1;">${kwObj.keyword}</span>
+                    <span class="kw-remove" onclick="event.preventDefault(); removeKeyword(${index})" style="cursor: pointer; color: var(--danger); font-weight: bold;">&times;</span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        function addKeywordTag() {
+            const input = document.getElementById("new_kw_input");
+            const val = input.value.trim();
+            if (val && !activeKeywords.some(kwObj => kwObj.keyword === val)) {
+                activeKeywords.push({ keyword: val, active: true });
+                renderKeywords();
+                input.value = "";
+            }
+        }
+
+        document.getElementById("new_kw_input").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") addKeywordTag();
+        });
+
+        function toggleKeyword(index) {
+            activeKeywords[index].active = !activeKeywords[index].active;
+            renderKeywords();
+        }
+
+        function removeKeyword(index) {
+            activeKeywords.splice(index, 1);
+            renderKeywords();
+        }
+
+        function selectAllKeywords() {
+            activeKeywords.forEach(kwObj => kwObj.active = true);
+            renderKeywords();
+        }
+
+        function deselectAllKeywords() {
+            activeKeywords.forEach(kwObj => kwObj.active = false);
+            renderKeywords();
+        }
+
+        async function saveServerKeywords() {
+            const status = document.getElementById("save-status");
+            status.textContent = "Saving...";
+            try {
+                // Only send active keywords to server
+                const activeKeywordsList = activeKeywords
+                    .filter(kwObj => kwObj.active)
+                    .map(kwObj => kwObj.keyword);
+
+                const res = await fetch(`${API_BASE}/keywords`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ keywords: activeKeywordsList })
+                });
+                if (res.ok) {
+                    status.innerHTML = '<span style="color: var(--success)"><i class="fa-solid fa-check"></i> 儲存成功</span>';
+                    setTimeout(() => status.textContent = "", 3000);
+
+                    // Refresh all data after saving
+                    loadNotifications();
+                    loadSecurityStats();
+                    fetchData(false); // Refresh table data
+                }
+            } catch (e) {
+                status.innerHTML = '<span style="color: var(--danger)">儲存失敗</span>';
+            }
+        }
+
+        // --- Feature: Keyword Modal Management ---
+        function openKeywordModal() {
+            const modal = document.getElementById('keyword-modal');
+            const list = document.getElementById('modal-kw-list');
+            list.innerHTML = '';
+
+            activeKeywords.forEach((kw, index) => {
+                const label = document.createElement('label');
+                label.className = 'kw-checkbox-item';
+                // Checkbox is CHECKED by default ("Select which to uncheck" -> Unchecking removes it)
+                // Or "Select which to keep"? 
+                // UX Standard: Show current state (Checked = Active). User unchecks to remove.
+                label.innerHTML = `
+                    <input type="checkbox" value="${kw}" checked>
+                    <span>${kw}</span>
+                `;
+                list.appendChild(label);
+            });
+
+            modal.classList.add('open');
+        }
+
+        function closeKeywordModal() {
+            document.getElementById('keyword-modal').classList.remove('open');
+        }
+
+        function applyKeywordChanges() {
+            const modal = document.getElementById('keyword-modal');
+            const checkboxes = modal.querySelectorAll('input[type="checkbox"]');
+            const newKeywords = [];
+
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    newKeywords.push(cb.value);
+                }
+            });
+
+            activeKeywords = newKeywords;
+            renderKeywords();
+            closeKeywordModal();
+            // Optional: Auto-save? The user usually expects "Apply" to just update local state, 
+            // then "Save Settings" to persist. Sticking to local update.
+        }
+
+        // --- Feature: Notifications ---
+        async function loadNotifications() {
+            try {
+                const res = await fetch(`${API_BASE}/notifications`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                });
+                if (res.status === 401) return;
+                const alerts = await res.json();
+                const section = document.getElementById("notif-section");
+                const list = document.getElementById("notification-list");
+
+                document.getElementById("notif-badge-count").textContent = alerts ? alerts.length : 0;
+
+                if (alerts && alerts.length > 0) {
+                    section.style.display = "block";
+                    list.innerHTML = alerts.map((a, idx) => {
+                        const keyword = a.matched_keyword || '';
+                        const highlightedSubject = highlightText(a.subject || '', keyword);
+                        const highlightedContent = highlightText(a.content || '無內文資料', keyword);
+                        return `
+                    <li class="notification-item-wrapper">
+                        <div class="notification-item" onclick="toggleNotifDetail(${idx})">
+                            <div style="flex:1">
+                                <span class="notif-badge">${a.matched_keyword}</span>
+                                <div style="font-weight: 600;">${a.company_name} (${a.company_code})</div>
+                                <div class="notif-content-preview">${highlightedSubject}</div>
+                            </div>
+                            <div class="text-muted text-sm" style="text-align:right">
+                                <div>${a.publish_date}</div>
+                                <div>${a.publish_time}</div>
+                                <div style="margin-top:4px; font-size:12px; color: var(--accent);">
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="notif-detail-${idx}" class="notif-detail-panel">
+                            ${highlightedContent}
+                        </div>
+                    </li>
+                `;
+                    }).join('');
+                } else {
+                    section.style.display = "none";
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function toggleNotifDetail(idx) {
+            const el = document.getElementById(`notif-detail-${idx}`);
+            el.style.display = el.style.display === "block" ? "none" : "block";
+        }
+
+        async function clearNotifications() {
+            // Local clear (hide) only
+            document.getElementById("notif-section").style.display = "none";
+
+            // Reset badge counts visually
+            document.getElementById("notif-badge-count").textContent = 0;
+        }
+
+        // --- Feature: Query Data ---
+        async function fetchData(updateUrl = true) {
+            const start = document.getElementById("start_date").value;
+            const end = document.getElementById("end_date").value;
+            const company = document.getElementById("search_company").value;
+            const keyword = document.getElementById("search_keyword").value;
+
+            // Update URL
+            if (updateUrl) {
+                const params = new URLSearchParams();
+                params.set('start_date', start);
+                params.set('end_date', end);
+                if (company) params.set('company', company);
+                if (keyword) params.set('keyword', keyword);
+                const newUrl = `${window.location.pathname}?${params.toString()}`;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+            }
+
+            const btn = document.querySelector('.btn-accent');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 查詢中...';
+            btn.disabled = true;
+
+            const url = `${API_BASE}/filter?start_date=${start}&end_date=${end}&company=${encodeURIComponent(company)}&keyword=${encodeURIComponent(keyword)}`;
+
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                });
+                currentData = await res.json();
+                renderTable();
+            } catch (e) {
+                alert("查詢失敗");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("results-body");
+            const footer = document.getElementById("table-footer");
+            const keyword = document.getElementById("search_keyword").value.trim();
+
+            if (currentData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">查無資料</td></tr>`;
+                footer.style.display = "none";
+                return;
+            }
+
+            footer.style.display = "block";
+            tbody.innerHTML = currentData.map((r, idx) => {
+                const highlightedSubject = highlightText(r.subject || '', keyword);
+                const highlightedContent = highlightText(r.content || '無內容', keyword);
+                return `
+            <tr>
+                <td><span class="cell-market">${r.market}</span></td>
+                <td class="cell-company">
+                    <span class="name">${r.company_name}</span>
+                    <span class="code">${r.company_code}</span>
+                </td>
+                <td class="cell-date">
+                    <div>${r.publish_date}</div>
+                    <div style="font-size: 12px;">${r.publish_time}</div>
+                </td>
+                <td class="cell-subject">${highlightedSubject}</td>
+                <td class="cell-action" onclick="toggleTableRow(${idx}, this)">
+                    展開內文 <i class="fa-solid fa-chevron-down"></i>
+                </td>
+            </tr>
+            <tr id="row-detail-${idx}" style="display:none; background-color: #f8fafc;">
+                <td colspan="5" style="padding: 20px; border-bottom: 2px solid var(--border); color: var(--text-main); white-space: pre-wrap; line-height: 1.6;">${highlightedContent}</td>
+            </tr>
+        `;
+            }).join('');
+        }
+
+        function toggleTableRow(idx, btn) {
+            const row = document.getElementById(`row-detail-${idx}`);
+            const isHidden = row.style.display === "none";
+            row.style.display = isHidden ? "table-row" : "none";
+            btn.innerHTML = isHidden ?
+                '收起內文 <i class="fa-solid fa-chevron-up"></i>' :
+                '展開內文 <i class="fa-solid fa-chevron-down"></i>';
+        }
+
+        function exportToCSV() {
+            // Simple CSV export
+            const headers = ["市場", "公司代號", "公司名稱", "發言日期", "發言時間", "主旨", "內文"];
+            const rows = currentData.map(r => [
+                r.market, r.company_code, r.company_name, r.publish_date, r.publish_time,
+                `"${(r.subject || "").replace(/"/g, '""')}"`,
+                `"${(r.content || "").replace(/"/g, '""')}"`
+            ].join(","));
+            const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `mops_export_${new Date().getTime()}.csv`;
+            link.click();
+        }
+
+        // --- Feature: Data Package Export/Import ---
+        async function exportDataPackage() {
+            const status = document.getElementById("import-status");
+            status.innerHTML = '<span style="color: var(--accent)"><i class="fa-solid fa-spinner fa-spin"></i> 匯出中...</span>';
+
+            try {
+                const res = await fetch(`${API_BASE}/export`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                });
+
+                console.log('Export response status:', res.status);
+                console.log('Export response headers:', Array.from(res.headers.entries()));
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('Export failed with status:', res.status, 'Error:', errorText);
+
+                    // Handle authentication/authorization errors
+                    if (res.status === 401) {
+                        alert('登入已過期,請重新登入');
+                        logout();
+                        return;
+                    } else if (res.status === 403) {
+                        throw new Error('權限不足: 此功能需要管理員權限。請確認您是以管理員帳號登入。');
+                    }
+
+                    throw new Error(`匯出失敗 (狀態碼: ${res.status})`);
+                }
+
+                // 取得檔案 blob
+                const blob = await res.blob();
+                console.log('Blob created, size:', blob.size, 'type:', blob.type);
+
+                if (blob.size === 0) {
+                    throw new Error('匯出的檔案是空的');
+                }
+
+                // 從 response headers 取得檔名（或使用預設檔名）
+                const contentDisposition = res.headers.get('Content-Disposition');
+                let filename = `disclosure_data_${new Date().getTime()}.dtt`;
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename=(.+)/);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+
+                console.log('Download filename:', filename);
+
+                // 觸發下載
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link); // Add to DOM for better compatibility
+                link.click();
+                document.body.removeChild(link); // Clean up
+
+                // Revoke the object URL after a delay to prevent memory leaks
+                setTimeout(() => URL.revokeObjectURL(link.href), 100);
+
+                status.innerHTML = '<span style="color: var(--success)"><i class="fa-solid fa-check"></i> 匯出成功</span>';
+                setTimeout(() => status.textContent = "", 3000);
+
+            } catch (e) {
+                console.error('Export error:', e);
+                const errorMessage = e.message || '未知錯誤';
+                status.innerHTML = `<span style="color: var(--danger)"><i class="fa-solid fa-xmark"></i> 匯出失敗: ${errorMessage}</span>`;
+                setTimeout(() => status.textContent = "", 5000);
+            }
+        }
+
+        async function importDataPackage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const status = document.getElementById("import-status");
+
+            // 驗證檔案格式
+            if (!file.name.endsWith('.dtt')) {
+                status.innerHTML = '<span style="color: var(--danger)"><i class="fa-solid fa-xmark"></i> 請選擇 .dtt 檔案</span>';
+                setTimeout(() => status.textContent = "", 3000);
+                event.target.value = ''; // 清除選擇
+                return;
+            }
+
+            // 確認對話框
+            const fileSize = (file.size / 1024 / 1024).toFixed(2); // MB
+            if (!confirm(`確定要匯入資料包嗎？\n檔案名稱：${file.name}\n檔案大小：${fileSize} MB\n\n匯入將會合併資料（跳過重複記錄）`)) {
+                event.target.value = '';
+                return;
+            }
+
+            status.innerHTML = '<span style="color: var(--accent)"><i class="fa-solid fa-spinner fa-spin"></i> 匯入中...</span>';
+
+            try {
+                // 準備 FormData
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // 上傳
+                const res = await fetch(`${API_BASE}/import`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    },
+                    body: formData
+                });
+
+                const result = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(result.detail || '匯入失敗');
+                }
+
+                // 顯示成功訊息
+                const details = result.details;
+                const message = `匯入成功！\n` +
+                    `• 新增記錄: ${details.records_imported}\n` +
+                    `• 跳過重複: ${details.records_skipped}\n` +
+                    `• 新增關鍵字: ${details.keywords_added}`;
+
+                alert(message);
+
+                status.innerHTML = '<span style="color: var(--success)"><i class="fa-solid fa-check"></i> 匯入完成</span>';
+
+                // 重新載入資料
+                setTimeout(() => {
+                    loadServerKeywords();
+                    loadNotifications();
+                    loadSecurityStats();
+                    fetchData(false);
+                    status.textContent = "";
+                }, 2000);
+
+            } catch (e) {
+                console.error(e);
+                status.innerHTML = `<span style="color: var(--danger)"><i class="fa-solid fa-xmark"></i> ${e.message}</span>`;
+                setTimeout(() => status.textContent = "", 5000);
+            } finally {
+                event.target.value = ''; // 清除選擇，允許重複上傳同一檔案
+            }
+        }
+
+        // --- Feature: Security Stats & Charts ---
+        async function loadSecurityStats() {
+            try {
+                const res = await fetch(`${API_BASE}/stats/security`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                });
+                if (res.status === 401) return;
+                const data = await res.json();
+
+                // 1. Update Cards
+                // Animation for numbers
+                // Use default 0 if undefined to prevent animation errors
+                animateValue("val-today", 0, data.today_count || 0, 1000);
+                animateValue("val-5days", 0, data.recent_5_days_count || 0, 1000);
+                animateValue("val-30days", 0, data.recent_30_days_count || 0, 1000);
+
+                // 2. Render Trend Chart
+                const ctxTrend = document.getElementById('trendChart').getContext('2d');
+                const hasTrendData = data.trend_30_days && data.trend_30_days.length > 0;
+
+                // Destroy old chart instance if exists
+                if (trendChartInstance) {
+                    trendChartInstance.destroy();
+                    trendChartInstance = null;
+                }
+
+                if (!hasTrendData) {
+                    // Display "No Data" message
+                    ctxTrend.font = '16px Open Sans';
+                    ctxTrend.fillStyle = '#999';
+                    ctxTrend.textAlign = 'center';
+                    ctxTrend.textBaseline = 'middle';
+                    ctxTrend.fillText('No Data', ctxTrend.canvas.width / 2, ctxTrend.canvas.height / 2);
+                } else {
+                    trendChartInstance = new Chart(ctxTrend, {
+                        type: 'line',
+                        data: {
+                            labels: data.trend_30_days.map(d => d.date.split('-').slice(1).join('/')), // MM/DD
+                            datasets: [{
+                                label: '警示數量',
+                                data: data.trend_30_days.map(d => d.count),
+                                borderColor: '#86BC24', // Deloitte Green
+                                backgroundColor: 'rgba(134, 188, 36, 0.1)',
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true,
+                                pointRadius: 3,
+                                pointHoverRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { stepSize: 1 }
+                                },
+                                x: {
+                                    grid: { display: false }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 3. Render Keyword Chart (Pie)
+                const ctxKw = document.getElementById('keywordChart').getContext('2d');
+                const keywordData = (data.keyword_distribution_30_days || []).slice(0, 5); // Top 5 only to match label
+                const hasKeywordData = keywordData.length > 0;
+                const palette = ['#0076a8', '#43b02a', '#009a44', '#2c5234', '#002a41', '#86BC24', '#000000', '#666666', '#f59e0b', '#dc2626'];
+
+                // Destroy old chart instance if exists
+                if (keywordChartInstance) {
+                    keywordChartInstance.destroy();
+                    keywordChartInstance = null;
+                }
+
+                if (!hasKeywordData) {
+                    // Display "No Data" message
+                    ctxKw.font = '16px Open Sans';
+                    ctxKw.fillStyle = '#999';
+                    ctxKw.textAlign = 'center';
+                    ctxKw.textBaseline = 'middle';
+                    ctxKw.fillText('No Data', ctxKw.canvas.width / 2, ctxKw.canvas.height / 2);
+                } else {
+                    keywordChartInstance = new Chart(ctxKw, {
+                        type: 'doughnut',
+                        data: {
+                            labels: keywordData.map(d => d.matched_keyword),
+                            datasets: [{
+                                data: keywordData.map(d => d.count),
+                                backgroundColor: keywordData.map((_, idx) => palette[idx % palette.length]),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'right' }
+                            }
+                        }
+                    });
+                }
+
+                // 4. Render Alert Type Chart (Pie) using wordlist matches
+                const ctxAlertType = document.getElementById('alertTypeChart').getContext('2d');
+                const alertTypeData = data.keyword_distribution_30_days || [];
+                const hasAlertTypeData = alertTypeData.length > 0;
+
+                // Destroy old chart instance if exists
+                if (alertTypeChartInstance) {
+                    alertTypeChartInstance.destroy();
+                    alertTypeChartInstance = null;
+                }
+
+                if (!hasAlertTypeData) {
+                    ctxAlertType.font = '16px Open Sans';
+                    ctxAlertType.fillStyle = '#999';
+                    ctxAlertType.textAlign = 'center';
+                    ctxAlertType.textBaseline = 'middle';
+                    ctxAlertType.fillText('No Data', ctxAlertType.canvas.width / 2, ctxAlertType.canvas.height / 2);
+                } else {
+                    alertTypeChartInstance = new Chart(ctxAlertType, {
+                        type: 'pie',
+                        data: {
+                            labels: alertTypeData.map(d => d.matched_keyword),
+                            datasets: [{
+                                data: alertTypeData.map(d => d.count),
+                                backgroundColor: alertTypeData.map((_, idx) => palette[idx % palette.length]),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'right' }
+                            }
+                        }
+                    });
+                }
+
+            } catch (e) {
+                console.error("Failed to load stats", e);
+            }
+        }
+
+        function animateValue(id, start, end, duration) {
+            // Safety check for invalid inputs
+            if (start === undefined || end === undefined || isNaN(start) || isNaN(end)) {
+                console.warn(`animateValue: Invalid start(${start}) or end(${end}) for id ${id}`);
+                document.getElementById(id).textContent = end !== undefined ? end : 0;
+                return;
+            }
+
+            if (start === end) {
+                document.getElementById(id).textContent = end;
+                return;
+            }
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+
+            // Safety: If stepTime is valid but very small, default to 10ms to prevent browser freeze
+            const finalStepTime = Math.max(stepTime, 10);
+
+            const obj = document.getElementById(id);
+
+            const timer = setInterval(function () {
+                current += increment;
+                obj.textContent = current;
+                if (current == end) {
+                    clearInterval(timer);
+                }
+            }, finalStepTime);
+        }
+
+        // --- Feature: Show Alert Details ---
+        async function showAlertDetails(period) {
+            const modal = document.getElementById('alert-details-modal');
+            const titleEl = document.getElementById('alert-modal-title');
+            const contentEl = document.getElementById('alert-details-content');
+
+            // Set title based on period
+            const titles = {
+                'today': '今日資安警示詳情',
+                '5days': '近5日資安警示詳情',
+                '30days': '近30日資安警示詳情'
+            };
+            titleEl.textContent = titles[period] || '警示詳情';
+
+            // Show loading state
+            contentEl.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent);"></i><p>載入中...</p></div>';
+            modal.classList.add('open');
+
+            try {
+                // Calculate date ranges
+                const today = new Date();
+                let startDate;
+
+                if (period === 'today') {
+                    startDate = today;
+                } else if (period === '5days') {
+                    startDate = new Date(today);
+                    startDate.setDate(startDate.getDate() - 4);
+                } else if (period === '30days') {
+                    startDate = new Date(today);
+                    startDate.setDate(startDate.getDate() - 29);
+                }
+
+                const startDateStr = startDate.toISOString().split('T')[0];
+                const endDateStr = today.toISOString().split('T')[0];
+
+                // Fetch alert details from notifications endpoint (already filtered by 30 days in backend)
+                const res = await fetch(`${API_BASE}/notifications`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('access_token')}` }
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+
+                let alerts = await res.json();
+
+                // Further filter by period on frontend
+                alerts = alerts.filter(a => {
+                    const alertDate = new Date(a.publish_date);
+                    return alertDate >= startDate && alertDate <= today;
+                });
+
+                // Display alerts
+                if (alerts.length === 0) {
+                    contentEl.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);"><i class="fa-solid fa-inbox" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>此期間無警示記錄</div>';
+                } else {
+                    contentEl.innerHTML = `
+                        <div style="margin-bottom: 10px; color: var(--text-muted);">共 ${alerts.length} 筆警示</div>
+                        <div class="alert-details-list">
+                            ${alerts.map((a, idx) => {
+                                const keyword = a.matched_keyword || '';
+                                const highlightedSubject = highlightText(a.subject || '', keyword);
+                                const highlightedContent = highlightText(a.content || '無內容資料', keyword);
+                                return `
+                                <div class="alert-detail-item" style="border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-md); background: white;">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                        <div style="flex: 1;">
+                                            <span class="notif-badge" style="background: var(--danger);">${a.matched_keyword}</span>
+                                            <div style="font-weight: 600; margin-top: 6px;">${a.company_name} (${a.company_code})</div>
+                                        </div>
+                                        <div style="text-align: right; color: var(--text-muted); font-size: 0.85rem;">
+                                            <div>${a.publish_date}</div>
+                                            <div>${a.publish_time}</div>
+                                        </div>
+                                    </div>
+                                    <div style="font-weight: 500; margin-bottom: 8px;">${highlightedSubject}</div>
+                                    <div class="alert-content-toggle" onclick="toggleAlertContent(${idx})" style="color: var(--accent); cursor: pointer; font-size: 0.85rem;">
+                                        <i class="fa-solid fa-chevron-down"></i> 展開內容
+                                    </div>
+                                    <div id="alert-content-${idx}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); color: var(--text-main); font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap;">
+                                        ${highlightedContent}
+                                    </div>
+                                </div>
+                            `;
+                            }).join('')}
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Failed to load alert details:', e);
+                contentEl.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--danger);"><i class="fa-solid fa-exclamation-triangle" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>載入失敗，請稍後再試</div>';
+            }
+        }
+
+        function closeAlertDetailsModal() {
+            document.getElementById('alert-details-modal').classList.remove('open');
+        }
+
+        function toggleAlertContent(idx) {
+            const contentEl = document.getElementById(`alert-content-${idx}`);
+            const isHidden = contentEl.style.display === 'none';
+            contentEl.style.display = isHidden ? 'block' : 'none';
+
+            // Update toggle button
+            const parentDiv = contentEl.parentElement;
+            const toggleBtn = parentDiv.querySelector('.alert-content-toggle');
+            toggleBtn.innerHTML = isHidden
+                ? '<i class="fa-solid fa-chevron-up"></i> 收起內容'
+                : '<i class="fa-solid fa-chevron-down"></i> 展開內容';
+        }
+    </script>
 </body>
+
 </html>

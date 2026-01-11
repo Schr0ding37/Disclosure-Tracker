@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Export Test Page</title>
+</head>
+
+<body>
+    <h1>Export Test Page</h1>
+    <button onclick="testExport()">Test Export</button>
+    <div id="status"></div>
+
+    <script>
+        async function testExport() {
+            const status = document.getElementById('status');
+            status.innerHTML = 'Testing export...<br>';
+
+            // Get token
+            const loginRes = await fetch('http://localhost:8080/api/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'username=Admin&password=password'
+            });
+
+            const tokenData = await loginRes.json();
+            const token = tokenData.access_token;
+            status.innerHTML += `Token: ${token.substring(0, 20)}...<br>`;
+
+            // Test export
+            status.innerHTML += 'Calling export API...<br>';
+            const res = await fetch('http://localhost:8080/api/export', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            status.innerHTML += `Response status: ${res.status}<br>`;
+            status.innerHTML += `Response headers:<br>`;
+            for (let [key, value] of res.headers.entries()) {
+                status.innerHTML += `  ${key}: ${value}<br>`;
+            }
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                status.innerHTML += `<span style="color: red">Error: ${errorText}</span><br>`;
+                return;
+            }
+
+            const blob = await res.blob();
+            status.innerHTML += `Blob size: ${blob.size} bytes<br>`;
+            status.innerHTML += `Blob type: ${blob.type}<br>`;
+
+            if (blob.size === 0) {
+                status.innerHTML += `<span style="color: red">Error: Blob is empty!</span><br>`;
+                return;
+            }
+
+            // Try to download
+            const contentDisposition = res.headers.get('Content-Disposition');
+            let filename = `test_${new Date().getTime()}.dtt`;
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename=(.+)/);
+                if (match) filename = match[1];
+            }
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            status.innerHTML += `<span style="color: green">✅ Export successful! File: ${filename}</span><br>`;
+        }
+    </script>
+</body>
+
+</html>

@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS alerts (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_alert UNIQUE(disclosure_id, matched_keyword)
 );
+
+-- 新增使用者表
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user', -- 'admin' or 'user'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
