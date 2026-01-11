@@ -131,8 +131,9 @@
     let currentData = [];
     let activeKeywords = [];
     
-    const currentHost = window.location.hostname;
-    const API_BASE = `http://${currentHost}:8000`;
+    // 使用 Nginx Reverse Proxy，統一透過 /api 路徑存取後端
+    // 這樣可以避免 CORS 問題，也不需要開啟 8000 port
+    const API_BASE = '/api';
 
     window.onload = () => {
         const today = new Date().toISOString().split('T')[0];

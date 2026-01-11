@@ -45,6 +45,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./frontend:/usr/share/nginx/html:ro # 設定為只讀以保護 SD 卡
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro # 掛載 Nginx 設定檔
     ports:
       - "8080:80"
 
