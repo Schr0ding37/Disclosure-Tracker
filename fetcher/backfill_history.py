@@ -235,17 +235,23 @@ class MOPSHistoryManager:
                                         success_count += 1
 
                             # --- 安全存檔判斷 ---
+                            threshold = 0.4  # 設定成功率閾值，例如 80% 以上就允許跳過
+                            success_rate = success_count / len(matches) if len(matches) > 0 else 0
+
                             if success_count == len(matches):
                                 logger.info(f"✅ 第 {curr_p} 頁全數處理成功 ({success_count}/{len(matches)})")
-                                if curr_p < total_pages:
-                                    curr_p += 1
-                                    self.save_progress(curr_y, curr_m, curr_k_idx, curr_p)
-                                else:
-                                    curr_p = 1
-                                    break # 換市場
+                            elif success_rate >= threshold:
+                                logger.warning(f"⚠️ 第 {curr_p} 頁部分失敗 ({success_count}/{len(matches)})，但達到門檻 {threshold}，跳過繼續。")
                             else:
-                                logger.warning(f"⚠️ 頁碼 {curr_p} 處理不完全 ({success_count}/{len(matches)})，將重試該頁")
-                                time.sleep(15) # 失敗的話休息久一點再重試同一頁
+                                logger.error(f"❌ 第 {curr_p} 頁失敗過多 ({success_count}/{len(matches)})")
+
+                            # 往下執行換頁
+                            if curr_p < total_pages:
+                                curr_p += 1
+                                self.save_progress(curr_y, curr_m, curr_k_idx, curr_p)
+                            else:
+                                curr_p = 1
+                                break # 換市場
                         
                         curr_k_idx += 1
                         self.save_progress(curr_y, curr_m, curr_k_idx, curr_p)
