@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  backfill_worker:
+    build: ./backend
+    image: mops-project-backend:latest  # 這裡要跟上面一樣
+    container_name: backfill_worker
+    # 連接到你目前已存在的 Docker 網路
+    networks:
+      - disclosure-tracker_default
+    environment:
+      # 指向現有的資料庫容器名稱 mops-db
+      DATABASE_URL: postgresql://mops:mops123@mops-db:5432/mops
+      # 設定要回補到的目標年份（例如 114 年）
+      BACKFILL_TARGET_YEAR: 114
+    volumes:
+      # 掛載程式碼目錄，確保執行的是最新版
+      - ./fetcher:/app/fetcher
+      # 掛載關鍵字清單（唯讀）
+      - ./keywords.txt:/app/keywords.txt:ro
+      # 掛載日誌檔，讓主服務的 API 也能讀到進度
+      - ./backfill.log:/app/backfill.log:rw
+    # 核心指令：只跑歷史補件程式
+    command: python3 /app/fetcher/backfill_history.py
+
+networks:
+  # 聲明使用外部已存在的網路，不重新建立
+  disclosure-tracker_default:
+    external: true

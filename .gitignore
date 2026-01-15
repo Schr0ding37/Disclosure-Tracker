@@ -1,5 +1,9 @@
 # 數據庫與本地資料
 postgres_data/
+pic/
+functioning.py
+test.py
+fetcher/progress.json
 
 # Python 緩存
 __pycache__/

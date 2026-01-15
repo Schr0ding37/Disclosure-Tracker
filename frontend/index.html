@@ -9,29 +9,24 @@
         .section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2, h3 { color: #333; border-left: 5px solid #007bff; padding-left: 10px; margin-top: 0; }
         
+        /* 歷史補件狀態看板樣式 */
+        .status-bar { 
+            background: #343a40; color: #adff2f; padding: 10px 15px; border-radius: 8px; 
+            margin-bottom: 20px; font-family: monospace; font-size: 13px; display: flex; 
+            justify-content: space-between; align-items: center; box-shadow: inset 0 0 10px #000;
+        }
+        .status-item { margin-right: 20px; }
+        .log-peek { color: #ddd; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 500px; }
+
         /* 通知列表樣式 */
         #notif-section { border: 2px solid #ff4d4d; background-color: #fff9f9; }
         #notification-list { 
-            list-style: none; 
-            padding: 0; 
-            max-height: 500px; /* 設定一個你覺得舒適的高度，例如 500px */
-            overflow-y: auto;  /* 超過高度時顯示捲軸 */
-            border: 1px solid #eee;
+            list-style: none; padding: 0; max-height: 500px; overflow-y: auto; border: 1px solid #eee;
         }
-        /* 修改通知項目樣式，移除原本的 flex 限制以利內文顯示 */
-        .notification-item:hover {
-            background-color: #fff0f0; /* 滑鼠移上去有一點顏色變化 */
-        }
+        .notification-item:hover { background-color: #fff0f0; }
         .notif-tag {
-            background: #ff4d4d;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-right: 8px;
-            font-weight: bold;
-            display: inline-block;
-            margin-bottom: 4px;
+            background: #ff4d4d; color: white; padding: 2px 8px; border-radius: 4px; 
+            font-size: 12px; margin-right: 8px; font-weight: bold; display: inline-block; margin-bottom: 4px;
         }
 
         /* 標籤管理介面 */
@@ -72,7 +67,17 @@
 <body>
 
 <div class="container">
-    <h2>📈 股市重大訊息主動監控系統</h2>
+    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <h2>📈 股市重大訊息主動監控系統</h2>
+        <div id="time-display" style="font-size: 12px; color: #666;">系統時間: 2026/01/14</div>
+    </div>
+
+    <div class="status-bar" id="backfill-status-bar">
+        <div>
+            <span class="status-item">⚙️ 歷史補件進度: <span id="backfill-info">讀取中...</span></span>
+        </div>
+        <div class="log-peek" id="log-peek">等待日誌同步...</div>
+    </div>
 
     <div id="notif-section" class="section" style="display:none;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -140,7 +145,41 @@
         document.getElementById("end_date").value = today;
         loadServerKeywords();
         loadNotifications();
+        
+        // 啟動歷史補件進度輪詢 (每 5 秒)
+        updateBackfillStatus();
+        setInterval(updateBackfillStatus, 5000);
     };
+
+    // --- 歷史補件監控邏輯 ---
+    async function updateBackfillStatus() {
+        try {
+            // 1. 抓取進度 JSON
+            const resStatus = await fetch(`${API_BASE}/backfill/status`);
+            const prog = await resStatus.json();
+            const infoSpan = document.getElementById("backfill-info");
+            
+            if (prog.current_year) {
+                const marketName = prog.current_kind_idx === 0 ? "上市" : "上櫃";
+                infoSpan.textContent = `${prog.current_year}年 ${prog.current_month}月 (${marketName}) - 第 ${prog.current_page} 頁`;
+                infoSpan.style.color = "#adff2f";
+            } else {
+                infoSpan.textContent = "已完成或未啟動";
+                infoSpan.style.color = "#888";
+            }
+
+            // 2. 抓取最新 Log
+            const resLog = await fetch(`${API_BASE}/backfill/log?lines=1`);
+            const logData = await resLog.json();
+            const logPeek = document.getElementById("log-peek");
+            if (logData.log) {
+                const cleanLog = logData.log.trim().split('\n').pop(); // 只取最後一行
+                logPeek.textContent = `最新動作: ${cleanLog}`;
+            }
+        } catch (e) {
+            document.getElementById("backfill-info").textContent = "連線中斷";
+        }
+    }
 
     // --- 顯示/隱藏 面板邏輯 ---
     function toggleKwPanel() {
@@ -155,25 +194,19 @@
         }
     }
 
-    // --- 關鍵字標籤邏輯 ---
+    // --- 關鍵字管理 ---
     async function loadServerKeywords() {
-    try {
-        const res = await fetch(`${API_BASE}/keywords`);
-        if (!res.ok) throw new Error("Network response was not ok");
-        
-        const data = await res.json();
-        
-        // 確保後端回傳的是物件中的 keywords 陣列
-        if (data && data.keywords) {
-            activeKeywords = data.keywords; // 將後端資料存入前端全域變數
-            console.log("成功載入關鍵字:", activeKeywords); // 除錯用
-            renderKeywordTags(); // 務必呼叫渲染函數，標籤才會顯示出來
+        try {
+            const res = await fetch(`${API_BASE}/keywords`);
+            const data = await res.json();
+            if (data && data.keywords) {
+                activeKeywords = data.keywords;
+                renderKeywordTags();
+            }
+        } catch (e) { 
+            console.error("無法載入關鍵字", e); 
         }
-    } catch (e) { 
-        console.error("無法載入關鍵字:", e); 
-        document.getElementById("kw_list_tags").innerHTML = '<span style="color:red">無法連線至後端獲取清單</span>';
     }
-}
 
     function renderKeywordTags() {
         const container = document.getElementById("kw_list_tags");
@@ -216,17 +249,12 @@
             if (res.ok) {
                 status.textContent = "✅ 設定儲存成功！正在啟動背景掃描...";
                 status.style.color = "green";
-                setTimeout(() => {
-                    status.textContent = "";
-                    loadNotifications();
-                }, 5000);
+                setTimeout(() => { status.textContent = ""; loadNotifications(); }, 5000);
             }
-        } catch (e) { 
-            status.textContent = "❌ 儲存失敗"; status.style.color = "red";
-        }
+        } catch (e) { status.textContent = "❌ 儲存失敗"; status.style.color = "red"; }
     }
 
-    // --- 通知與查詢 (保持不變) ---
+    // --- 通知與查詢 ---
     async function loadNotifications() {
         try {
             const res = await fetch(`${API_BASE}/notifications`);
@@ -260,14 +288,9 @@
         } catch (e) { console.error("無法載入通知列表", e); }
     }
 
-    // 新增一個切換顯示的函數
     function toggleNotifContent(index) {
         const contentDiv = document.getElementById(`notif-content-${index}`);
-        if (contentDiv.style.display === "none") {
-            contentDiv.style.display = "block";
-        } else {
-            contentDiv.style.display = "none";
-        }
+        contentDiv.style.display = contentDiv.style.display === "none" ? "block" : "none";
     }
 
     async function clearNotifications() {
@@ -287,7 +310,6 @@
         const company = document.getElementById("search_company").value;
         const keyword = document.getElementById("search_keyword").value;
 
-        // 組合多參數 URL
         let url = `${API_BASE}/filter?start_date=${start}&end_date=${end}` + 
                 `&company=${encodeURIComponent(company)}` + 
                 `&keyword=${encodeURIComponent(keyword)}`;
@@ -312,7 +334,6 @@
                         contentCell.textContent = r.content || "無內容";
                     }
                 };
-
                 tr.innerHTML = `
                     <td>${r.market}</td>
                     <td>${r.company_code}<br>${r.company_name}</td>
@@ -323,9 +344,7 @@
                 tbody.appendChild(tr);
             });
             document.getElementById("exportBtn").style.display = currentData.length > 0 ? "inline-block" : "none";
-        } catch (e) {
-            alert("查詢失敗，請檢查後端連線");
-        }
+        } catch (e) { alert("查詢失敗，請檢查後端連線"); }
     }
 
     function exportToCSV() {

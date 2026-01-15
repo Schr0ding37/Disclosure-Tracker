@@ -54,10 +54,14 @@ def save(records, market):
 
         try:
             # 使用 ON CONFLICT DO UPDATE 確保一定能拿到 ID (RETURNING id)
+            # 1. 確保 INSERT 欄位與你的 Schema 完全一致
+            # 2. 加入 fetch_status 預設為 TRUE (因為 API 抓下來就是完整的)
+            # 3. 加入 raw_onclick_params 預設為 NULL (API 資料沒有這個)
             cur.execute("""
                 INSERT INTO disclosures 
-                (market, company_code, company_name, publish_date, publish_time, subject, content, source_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (market, company_code, company_name, publish_date, publish_time, 
+                 subject, content, source_date, fetch_status, raw_onclick_params)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, NULL)
                 ON CONFLICT (company_code, publish_date, publish_time, subject) 
                 DO UPDATE SET company_name = EXCLUDED.company_name
                 RETURNING id
