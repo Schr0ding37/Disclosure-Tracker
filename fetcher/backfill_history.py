@@ -112,17 +112,46 @@ class MOPSHistoryManager:
         soup = BeautifulSoup(html, 'html.parser')
         table = soup.find('table', {'class': 'hasBorder'})
         if not table: return None
-        data = {}
-        for tr in table.find_all('tr'):
-            heads = tr.find_all('td', {'class': 'tblHead'})
-            values = tr.find_all('td', {'class': 'odd'})
-            if len(heads) == len(values) or (len(heads)==1 and len(values)==1):
+
+        # 1. 建立一個對應字典，把所有標籤與內容配對
+        raw_data = {}
+        rows = table.find_all('tr')
+        for tr in rows:
+            # 標題可能是 td 或 th，且 class 包含 tblHead 或 tt
+            heads = tr.find_all(['td', 'th'], {'class': ['tblHead', 'tt']})
+            # 內容通常是 odd 或 even，或是任何沒有 tblHead 的 td
+            values = tr.find_all('td', {'class': ['odd', 'even']})
+            
+            # 情況 A：標題與內容在同一列交替出現 (115/01/14 版本)
+            if len(heads) == len(values) or (len(heads) > 0 and len(values) > 0):
                 for h, v in zip(heads, values):
-                    key = h.get_text(strip=True)
+                    k = h.get_text(strip=True)
                     pre = v.find('pre')
                     val = pre.get_text().strip() if pre else v.get_text(strip=True)
-                    data[key] = val.replace('\xa0', '')
-        return data
+                    raw_data[k] = val.replace('\xa0', ' ')
+
+        # 2. 語義化提取：用「關鍵字集合」來找主旨與說明
+        # 這樣即使未來變成「公告主旨」、「全文說明」也能抓到
+        subject_keys = ['主旨', '公告主題', '主題']
+        content_keys = ['說明', '當日重大訊息之詳細內容', '詳細內容', '事實發生日', '發生緣由']
+
+        # 提取所有命中關鍵字的內容
+        subject = next((raw_data[k] for k in subject_keys if k in raw_data), "")
+        
+        # 說明部分比較特殊：我們把所有看起來像內容的欄位串起來
+        # 這樣可以確保關鍵字過濾（如：新藥、授權）絕對不會漏掉
+        content_parts = [raw_data[k] for k in content_keys if k in raw_data]
+        content = "\n".join(content_parts)
+
+        # 3. 終極保底：如果還是空的，把整個表格的文字都塞進去
+        if not subject and not content:
+            content = table.get_text(separator="\n", strip=True)
+            subject = "（特殊格式解析）"
+
+        return {
+            "主旨": subject,
+            "說明": content
+        }
 
     def roc_to_ad(self, date_str):
         s = str(date_str).strip()
@@ -201,7 +230,7 @@ class MOPSHistoryManager:
 
                                         # --- 在這裡加入 Log ---
                                         logger.info(f"   [DB] 已存入: {data['code']} {data['name']}")  
-                                                  
+
                                         conn.commit()
                                         success_count += 1
 
